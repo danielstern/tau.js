@@ -1,20 +1,18 @@
-import WebSocket from "ws";
 import {
-    compute_usage,
-    loadmd,
     log_message_handler,
     message_promise,
     parse_message
 } from "./etc.js";
 import { Subject } from "rxjs"
-import {
-    API_KEY,
-    REALTIME_API_MINI_URL,
-    REALTIME_API_URL
-} from "./spec.js";
+
+import { create_openai_realtime_ws } from "./create-ws/index.js";
+import { 
+    accumulate_usage,
+    compute_usage
+ } from "./compute-usage/index.js";
 
 export async function Tau({
-    api_key = API_KEY,
+    api_key = null,
     audio = false,
     instructions = undefined,
     mini = true,
@@ -27,30 +25,20 @@ export async function Tau({
     voice = "sage",
 }) {
 
-    if (!api_key) throw new Error(loadmd("docs/error/no-api-key"))
-
-    function create_ws() {
-        let headers = {
-            "Authorization": `Bearer ${api_key}`,
-        }
-
-        if (realtime) headers["OpenAI-Beta"] = "realtime=v1"
-
-        let ws = new WebSocket(mini ? REALTIME_API_MINI_URL : REALTIME_API_URL, { headers })
-        return ws
-    }
-
-    let ws = create_ws()
+    let ws = create_openai_realtime_ws({
+        api_key,
+        mini
+    })
     let event$ = new Subject()
     let _session = null
     let _conversation = []
-    let _usage = {
+    let _accumulated_usage = {
         computed: {
             total_usage_cost: 0
         },
         tokens: {}
     }
-    
+
     async function init() {
 
         await message_promise(ws, data => data.type === "session.created")
@@ -74,11 +62,6 @@ export async function Tau({
     }
 
     await init()
-
-
-
-    
-
 
     function event_message_handler(message) {
         const data = parse_message(message)
@@ -150,18 +133,8 @@ export async function Tau({
         console.info(JSON.stringify(data.response, null, 2))
         let usage = compute_usage({ data, realtime, mini })
         console.info(usage)
-        for (let key in usage) {
-            let { tokens, usage_cost } = usage[key]
-            _usage.computed.total_usage_cost += usage_cost
-            if (!_usage.tokens[key]) _usage.tokens[key] = {
-                tokens: 0,
-                usage_cost: 0
-            }
-            _usage.tokens[key].tokens += tokens
-            _usage.tokens[key].usage_cost += usage_cost
-        }
-
-
+        _accumulated_usage = accumulate_usage(usage, _accumulated_usage)
+      
         let output = data.response.output[0]
         let content = output.content[0]
         if (output.type === "message") {
@@ -189,7 +162,9 @@ export async function Tau({
         close,
         get session() { return _session },
         get conversation() { return _conversation },
-        get usage() { return _usage }
+        get usage() { return _accumulated_usage }
     }
 
 }
+
+export { load_md, load_yml } from "./etc.js"

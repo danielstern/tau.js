@@ -1,0 +1,23 @@
+import WebSocket from "ws";
+import {
+    API_KEY,
+    REALTIME_API_MINI_URL,
+    REALTIME_API_URL
+} from "./spec.js";
+import { load_md } from "../etc.js";
+
+export function create_openai_realtime_ws({
+    api_key,
+    mini
+}) {
+    if (API_KEY && !api_key) api_key = API_KEY
+    if (!api_key) throw new Error(load_md("docs/error/no-api-key"))
+
+    let headers = {
+        ["Authorization"] : `Bearer ${api_key}`,
+        ["OpenAI-Beta"] : `realtime=v1`
+    }
+
+    let ws = new WebSocket(mini ? REALTIME_API_MINI_URL : REALTIME_API_URL, { headers })
+    return ws
+}

@@ -5,3 +5,4 @@ Turning complex AI models into simple building blocks
 Before you start, you need to have you OpenAI API Key ready.
 
 ## Features
+### Cost Computation
