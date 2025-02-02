@@ -108,7 +108,6 @@ export async function create_session({
         })
         let { item } = await message_promise(ws, data => data.type === "conversation.item.created")
         let compute_time = Date.now() - start_time
-        // console.info(JSON.stringify(item, null, 2))
         _conversation.push({
             id: item.id,
             role: item.role,
@@ -149,7 +148,7 @@ export async function create_session({
 
         _compute_time.total_responses += 1
         _compute_time.total_response_time += compute_time
-        _compute_time.average_response_time = (
+        _compute_time.average_response_time = ~~(
             _compute_time.total_response_time / 
             _compute_time.total_responses
         )

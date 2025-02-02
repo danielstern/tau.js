@@ -1,6 +1,7 @@
 import { readFileSync } from "fs";
 import path from "path";
 import yaml from "js-yaml";
+import readline from "readline";
 
 export function log_message_handler(message) {
     const data = parse_message(message)
@@ -61,4 +62,22 @@ export function message_promise(ws, condition = () => true) {
         ws.on("message", listener)
     }
     return new Promise(promise_handler)
+}
+
+
+export async function user_tty() {
+    const rl = readline.createInterface({
+        input: process.stdin,
+        output: process.stdout,
+        prompt: 'Enter user action> '
+    });
+    return new Promise(resolve => {
+        let handler = line => {
+            let input = line.trim()
+            rl.off(line, handler)
+            resolve(input)
+            rl.close()
+        }
+        rl.on("line", handler)
+    })
 }
