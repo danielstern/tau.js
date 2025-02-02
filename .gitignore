@@ -1,0 +1,6 @@
+.env
+gcp.json
+node_modules
+__archive
+tmp
+notes.md
