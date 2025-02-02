@@ -4,9 +4,9 @@
  */
 export declare function Tau(options: {
     audio?: boolean,
-    documents?: any[],
+    // documents?: any[],
     instructions: any,
-    logging?: boolean,
+    // logging?: boolean,
     mini?: boolean,
     temperature?: number,
     tools?: any[],
