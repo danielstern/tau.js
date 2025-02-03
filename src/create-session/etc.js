@@ -1,3 +1,33 @@
+export async function message_handler(ws, condition, callback) {
+    let listener = (message) => {
+        let data = parse_message(message)
+        if (condition(data)) {
+            callback(data)
+            // resolver(data)
+        }
+    }
+    ws.on("message", listener)
+}
+
+
+export function message_promise(ws, condition = () => true) {
+    let promise_handler = resolve => {
+        let listener = (message) => {
+            let data = parse_message(message)
+            if (condition(data)) {
+                resolver(data)
+            }
+        }
+        let resolver = (data) => {
+            ws.off("message", listener)
+            resolve(data)
+        }
+        ws.on("message", listener)
+    }
+    return new Promise(promise_handler)
+}
+
+
 export function convert_response_to_fn(response) {
     
     let all_output = response.output
@@ -5,6 +35,10 @@ export function convert_response_to_fn(response) {
         throw new Error("A response was returned with no output value.")
     }
     let output = all_output[0]
+    if (!output) {
+        console.info(JSON.parse(response, null, 2))
+        throw new Error("A response was returned with no output")
+    }
     let id = output.id
     if (output.type === "message") {
         let content = output.content[0]
@@ -31,4 +65,17 @@ export function convert_response_to_fn(response) {
             arguments: function_arguments
         }
     }
+}
+
+export function log_message_handler(message) {
+    const data = parse_message(message)
+    if (process.env.TAU_LOGGING) {
+        console.info(data.type)
+    }
+    if (data.error) console.error(data.error)
+}
+export function parse_message(message) {
+    const message_string = message.toString();
+    const parsed_message = JSON.parse(message_string);
+    return parsed_message
 }

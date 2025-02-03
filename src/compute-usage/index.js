@@ -29,7 +29,7 @@ export function compute_usage({
             output_token_details 
         } = usage
         let { 
-            text_tokens: input_text_tokens, 
+            text_tokens: input_text_tokens_gross, 
             audio_tokens: input_audio_tokens, cached_tokens_details 
         } = input_token_details
         let { 
@@ -43,10 +43,12 @@ export function compute_usage({
 
         let summary = {}
         let prefix = `realtime_${mini ? "mini_" : ""}`
+        let input_text_tokens = input_text_tokens_gross - input_text_tokens_cached
         let base = {
             input_text_tokens,
-            input_audio_tokens,
             input_text_tokens_cached,
+            input_text_tokens_gross,
+            input_audio_tokens,
             input_audio_tokens_cached,
             output_text_tokens,
             output_audio_tokens
@@ -59,12 +61,12 @@ export function compute_usage({
             let { tokens } = val
             let cost = costs[key]
             if (!cost) {
-                console.warn("No pricing found for", key)
                 cost = 0
             }
             let usage_cost = tokens * cost / 1000000
             summary[key] = {
                 tokens,
+                cpm: cost,
                 usage_cost
             }
         }
@@ -75,10 +77,11 @@ export function compute_usage({
 
 export function accumulate_usage(usage, accumulated) {
     for (let key in usage) {
-        let { tokens, usage_cost } = usage[key]
+        let { tokens, usage_cost, cpm } = usage[key]
         accumulated.computed.total_usage_cost += usage_cost
         if (!accumulated.tokens[key]) accumulated.tokens[key] = {
             tokens: 0,
+            cpm,
             usage_cost: 0
         }
         accumulated.tokens[key].tokens += tokens
