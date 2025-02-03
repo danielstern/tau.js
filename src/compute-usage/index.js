@@ -87,3 +87,15 @@ export function accumulate_usage(usage, accumulated) {
 
     return accumulated
 }
+
+export function accumulate_compute_time(accumulator, compute_time) {
+    
+    accumulator.total_responses += 1
+    accumulator.total_response_time += compute_time
+    accumulator.average_response_time = ~~(
+        accumulator.total_response_time / 
+        accumulator.total_responses
+    )
+
+    return accumulator
+}

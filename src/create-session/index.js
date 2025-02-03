@@ -1,15 +1,19 @@
-import { Subject } from "rxjs"
+import delay from "delay"
+import { Subject, firstValueFrom } from "rxjs"
 import {
     log_message_handler,
     message_promise,
     parse_message
 } from "../etc.js";
 import { create_openai_realtime_ws } from "../create-ws/index.js";
-import { 
+import {
+    accumulate_compute_time,
     accumulate_usage,
     compute_usage
- } from "../compute-usage/index.js";
+} from "../compute-usage/index.js";
+import { convert_response_to_fn } from "./etc.js";
 
+let realtime = true
 export async function create_session({
     api_key = null,
     audio = false,
@@ -18,9 +22,6 @@ export async function create_session({
     temperature = 0.89,
     tools = [],
     tool_choice = "none",
-    realtime = true,
-    tutorial = [],
-    output_audio_format = "pcm16",
     voice = "sage",
 }) {
 
@@ -38,10 +39,13 @@ export async function create_session({
         tokens: {}
     }
     let _compute_time = {
-        total_responses : 0,
-        total_response_time : 0,
-        average_response_time : 0
+        total_responses: 0,
+        total_response_time: 0,
+        average_response_time: 0
     }
+
+    let response$ = new Subject()
+    let is_generating_response = false
 
     async function init() {
 
@@ -54,10 +58,6 @@ export async function create_session({
             tool_choice,
             voice,
         })
-
-        for (let { role, message } of tutorial) {
-            await create({ role, message })
-        }
 
         ws.on("message", log_message_handler)
         ws.on("message", event_message_handler)
@@ -88,10 +88,26 @@ export async function create_session({
         _session = session
     }
 
-    async function create({
-        message,
-        role = "user"
-    }) {
+    let create_queue = []
+    let processing_create_queue = false
+
+    async function create(data) {
+        create_queue.push(data)
+        if (!processing_create_queue) {
+            processing_create_queue = true
+            process_create_queue()
+        }
+        while (true) {
+            if (!processing_create_queue) break
+            await delay(10)
+        }
+        return true
+        // while (processing_create_queue) {}
+    }
+
+    async function process_create_queue() {
+        processing_create_queue = true
+        let { message, role } = create_queue.pop()
         let start_time = Date.now()
         send_ws({
             type: "conversation.item.create",
@@ -115,19 +131,54 @@ export async function create_session({
             type: "text",
             message: item.content[0].text,
         })
+
+        if (is_generating_response) {
+            console.info("Updated while generating response. Potential error")
+        }
+        if (create_queue.length > 0) {
+            await process_create_queue()
+        } else {
+            processing_create_queue = false
+        }
     }
 
-    async function user(message) { await create({ message, role: "user" }) }
-    async function system(message) { await create({ message, role: "system" }) }
-    async function assistant(message) { await create({ message, role: "assistant" }) }
+    async function user(message) {
+        await create({ message, role: "user" })
+    }
+    async function system(message) {
+        await create({ message, role: "system" })
+    }
+    async function assistant(message) {
+        await create({ message, role: "assistant" })
+    }
 
-    async function response({
-        conversation = "auto",
-        input = undefined,
-        instructions = undefined,
-        tools = undefined,
-        tool_choice = undefined
-    } = {}) {
+    async function response(args) {
+        if (!is_generating_response) generate_response(args)
+        let data = await firstValueFrom(response$)
+        return data
+    }
+
+    async function cancel_response() {
+        if (!is_generating_response) return true
+        send_ws({ type: "response.cancel" })
+        await message_promise(ws, data => data.type === "response.cancelled")
+        is_generating_response = false
+        return true
+
+    }
+
+    async function generate_response(args = {}) {
+        let {
+            conversation = "auto",
+            input = undefined,
+            instructions = undefined,
+            tools = undefined,
+            tool_choice = undefined,
+            output_audio_format = "pcm16"
+        } = args
+        if (is_generating_response) throw new Error("Already generating response")
+
+        is_generating_response = true
         let start_time = Date.now()
         send_ws({
             type: "response.create",
@@ -140,59 +191,50 @@ export async function create_session({
                 tool_choice
             }
         })
-        let data = await message_promise(ws, data => data.type === "response.done")
-        // console.info(JSON.stringify(data.response, null, 2))
-        let usage = compute_usage({ data, realtime, mini })
-        _accumulated_usage = accumulate_usage(usage, _accumulated_usage)
-        let compute_time = Date.now() - start_time
+        // let data = await message_promise(ws, data => data.type === "response.done" || data.type === "response.cancelled")
+        let data = await message_promise(ws, data => {
+            if (data.type === "response.done") return true
+            if (data.type === "response.cancelled") return true
+            // if (data.type === "conversation.item.created") {
+            //     // console.info(JSON.stringify(data, null, 2))
+            //     if (data.item.role === "system" || data.item.role === "user") {
+            //         // console.info("System or user message adedd during response. regenerating")
+            //         // await cancel_response()
+            //         return true
+            //     }
+            // }
+            // if (data.type === "conversation.item.created") return true
+        })
+        is_generating_response = false
+        if (data.type === "response.cancelled") {
+            console.info("Response cancelled")
+            return
+            // return null
+        }
+        if (data.type === "conversation.item.created") {
+            console.info("System or user message added during response. regenerating")
+            await cancel_response()
+            console.info("Response cancelled")
+            await response(args)
 
-        _compute_time.total_responses += 1
-        _compute_time.total_response_time += compute_time
-        _compute_time.average_response_time = ~~(
-            _compute_time.total_response_time / 
-            _compute_time.total_responses
-        )
-      
-        let output = data.response.output[0]
-        if (output.type === "message") {
-            let content = output.content[0]
-            let message = content.text || content.transcript
-            _conversation.push({
-                id: output.id,
-                role: "assistant",
-                type : "message",
-                compute_time,
-                data : {
-                    message
-                }
-            })
-            return {
-                name: "message",
-                arguments: {
-                    text: message
-                }
-            }
+            // return null
         }
-        if (output.type === "function_call") {
-            let name = output.name
-            let function_arguments = null
-            try {
-                function_arguments = JSON.parse(output.arguments)
-            } catch (e) {
-                console.error("Encountered an error parsing function arguments for function", name )
+        let usage = compute_usage({ data, realtime, mini })
+        let compute_time = Date.now() - start_time
+        _accumulated_usage = accumulate_usage(usage, _accumulated_usage)
+        _compute_time = accumulate_compute_time(_compute_time, compute_time)
+        let fn_data = convert_response_to_fn(data.response)
+        _conversation.push({
+            id: fn_data.id,
+            role: "assistant",
+            type: "message",
+            compute_time,
+            data: {
+                fn_data
             }
-            _conversation.push({
-                id: output.id,
-                role: "assistant",
-                compute_time,
-                type : name,
-                data : function_arguments
-            })
-            return {
-                name,
-                arguments: function_arguments
-            }
-        }
+        })
+        response$.next({...fn_data, compute_time})
+        // return fn_data
     }
 
     return {
@@ -201,6 +243,7 @@ export async function create_session({
         assistant,
         response,
         close,
+        cancel_response,
         event$,
         get session() { return _session },
         get conversation() { return _conversation },
