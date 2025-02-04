@@ -1,10 +1,13 @@
-import { Subject } from "rxjs";
-
+import { 
+    Subject
+} from "rxjs";
 import {
     accumulate_usage,
     compute_usage
 } from "../compute-usage/index.js";
-import { create_openai_realtime_ws } from "../create-ws/index.js";
+import { 
+    create_openai_realtime_ws
+} from "../create-ws/index.js";
 import {
     convert_response_to_fn,
     log_message_handler,
@@ -13,13 +16,12 @@ import {
     parse_message
 } from "./etc.js";
 
-let realtime = true
 export async function create_session({
     api_key = null,
     audio = false,
     instructions = undefined,
     mini = true,
-    temperature = 0.89,
+    temperature = 0.68,
     tools = [],
     tool_choice = "none",
     voice = "sage",
@@ -43,7 +45,6 @@ export async function create_session({
     let message_count = 0
     let job_count = 0
     let jobs = {}
-    // let 
 
     async function init() {
 
@@ -132,14 +133,19 @@ export async function create_session({
         return await message_promise(ws, data => data.type === "response.done")
     }
 
-    async function response({
-        conversation = "auto",
-        input = undefined,
-        instructions = undefined,
-        tools = undefined,
-        tool_choice = undefined,
-        output_audio_format = "pcm16"
-    } = {}) {
+    async function response(args = {}, meta = {}) {
+        let {
+            conversation = "auto",
+            input = undefined,
+            instructions = undefined,
+            tools = undefined,
+            tool_choice = undefined,
+            output_audio_format = "pcm16"
+        } = args
+        let {
+            prev_compute_time = 0,
+            tries = 1
+        } = meta
         let job_id = `job-${++job_count}`
         jobs[job_id] = true
         let start_time = Date.now()
@@ -160,14 +166,27 @@ export async function create_session({
         })
         delete jobs[job_id]
         if (data.type === "response.cancelled") {
-            // throw new Error("Response cancelled") // ????
+            return null
+        }
+        let compute_time = Date.now() - start_time
+        let total_compute_time = compute_time + prev_compute_time
+
+        if (data.response.status === "failed") {
+            console.info("The request failed after", compute_time, "ms", "Attempting to retry...")
+            return await response (args, {
+                tries : tries + 1,
+                prev_compute_time : total_compute_time
+            })
         }
       
-        let usage = compute_usage({ data, realtime, mini })
-        let compute_time = Date.now() - start_time
+        let usage = compute_usage({ data, realtime : true, mini })
         let fn_data = convert_response_to_fn(data.response)
         _accumulated_usage = accumulate_usage(usage, _accumulated_usage)
-        return { ... fn_data, compute_time }
+        return { 
+            ...fn_data, 
+            compute_time : total_compute_time, 
+            attempts : tries 
+        }
     }
 
     await init()

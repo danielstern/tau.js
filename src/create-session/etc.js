@@ -34,10 +34,14 @@ export function convert_response_to_fn(response) {
     if (!all_output) {
         throw new Error("A response was returned with no output value.")
     }
+    if (all_output.length > 1) {
+        console.info(JSON.stringify(response, null, 2))
+        throw new Error("Unexpected extra entries in response")
+    }
     let output = all_output[0]
     if (!output) {
-        console.info(JSON.parse(response, null, 2))
-        throw new Error("A response was returned with no output")
+        console.warn("A response was returned with no output", response)
+        throw new Error("A response was returned with no output value.")
     }
     let id = output.id
     if (output.type === "message") {
