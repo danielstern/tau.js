@@ -35,8 +35,11 @@ export function convert_response_to_fn(response) {
         throw new Error("A response was returned with no output value.")
     }
     if (all_output.length > 1) {
-        console.info(JSON.stringify(response, null, 2))
-        throw new Error("Unexpected extra entries in response")
+        console.info(JSON.stringify(all_output, null, 2))
+        // console.info(JSON.stringify(response, null, 2))
+        // throw new Error("Unexpected extra entries in response")
+        console.info("Received unexpected second output from function response. Behavior when more than one output is returned is technically undefined. Reducing output array to include only function call.")
+        all_output = all_output.filter(o => o.type === "function_call")
     }
     let output = all_output[0]
     if (!output) {

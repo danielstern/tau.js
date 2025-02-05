@@ -41,7 +41,7 @@ export async function create_session({
         tokens: {}
     }
 
-    let previous_item_id = "root"
+    // let previous_item_id = "root"
     let message_count = 0
     let job_count = 0
     let jobs = {}
@@ -63,12 +63,16 @@ export async function create_session({
 
         message_handler(ws, data => data.type === "conversation.item.created", data => {
             if (data.item.content) {
+                
                 _conversation.push(data.item)
             }
         })
 
         message_handler(ws, data => data.type === "response.done", data => {
-            _conversation.push(data.response.output[0])
+            // console.info(data.response)
+            let { output, conversation_id } = data.response
+            if (conversation_id === null) return
+            _conversation.push(output[0])
         })
 
         return ws
@@ -100,7 +104,7 @@ export async function create_session({
         let id = `tau-message-${++message_count}-${Date.now()}`
         send_ws({
             type: "conversation.item.create",
-            previous_item_id,
+            // previous_item_id,
             item: {
                 id,
                 type: "message",
@@ -114,23 +118,33 @@ export async function create_session({
             }
         })
 
-        previous_item_id = id
-        await message_promise(ws, data => data.type === "conversation.item.created" && data.item.id === id)
+        // previous_item_id = id
+        let data = await message_promise(ws, data => data.type === "conversation.item.created" && data.item.id === id)
+        return data.item
     }
 
     async function user(message) {
-        await create({ message, role: "user" })
+        return await create({ message, role: "user" })
     }
     async function system(message) {
-        await create({ message, role: "system" })
+        return await create({ message, role: "system" })
     }
     async function assistant(message) {
-        await create({ message, role: "assistant" })
+        return await create({ message, role: "assistant" })
     }
 
     async function cancel_response() {
         send_ws({ type: "response.cancel" })
         return await message_promise(ws, data => data.type === "response.done")
+    }
+
+    async function delete_conversation_item(item_id) {
+        send_ws({type:"conversation.item.delete", item_id})
+        await message_promise(ws, data => data.type === "conversation.item.deleted")
+        _conversation = _conversation.map(a => {
+            if (a.id !== item_id) return a
+            return { ...a, deleted : true}
+        })
     }
 
     async function response(args = {}, meta = {}) {
@@ -189,6 +203,13 @@ export async function create_session({
         }
     }
 
+    
+    // async function until_not_firing() {
+    //     while (true) {
+    //         if (!is_firing) return true
+    //         await delay(10)
+    //     }
+    // }
     await init()
 
     return {
@@ -198,6 +219,7 @@ export async function create_session({
         response,
         close,
         cancel_response,
+        delete_conversation_item,
         event$,
         get session() { return _session },
         get conversation() { return _conversation },
