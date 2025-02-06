@@ -9,8 +9,7 @@
     },
     "exports": {
         ".": "./src/index.js",
-        "./utility": "./src/etc.js",
-        "./session": "./src/create-session/index.js"
+        "./utility": "./src/etc.js"
     },
     "keywords": [],
     "author": "",

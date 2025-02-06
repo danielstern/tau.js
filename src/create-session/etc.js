@@ -9,17 +9,26 @@ export async function message_handler(ws, condition, callback) {
 }
 
 export function message_promise(ws, condition = () => true) {
-    let promise_handler = resolve => {
+    let promise_handler = (resolve, _reject) => {
         let listener = (message) => {
+            // try {
+
             let data = parse_message(message)
             if (condition(data)) {
-                resolver(data)
+                ws.off("message", listener)
+                resolve(data)
             }
+            // } catch (e) {
+            // console.info("Unexpected error", e)
+            // reject(error)
+            // }
         }
-        let resolver = (data) => {
-            ws.off("message", listener)
-            resolve(data)
-        }
+        // let resolver = (data) => {
+        //     console.info(data)
+        //     ws.off("message", listener)
+        //     resolve(data)
+        // }
+        // console.info("Add listener")
         ws.on("message", listener)
     }
     return new Promise(promise_handler)
@@ -27,14 +36,14 @@ export function message_promise(ws, condition = () => true) {
 
 
 export function convert_response_to_fn(response) {
-    
+
     let all_output = response.output
     if (!all_output) {
         throw new Error("A response was returned with no output value.")
     }
     if (all_output.length > 1) {
-        console.info(JSON.stringify(all_output, null, 2))
-        console.info("Received unexpected second output from function response. Behavior when more than one output is returned is technically undefined. Reducing output array to include only function call.")
+        console.warn(JSON.stringify(all_output, null, 2))
+        console.warn("Received unexpected second output from function response. Behavior when more than one output is returned is technically undefined. Reducing output array to include only function call.")
         all_output = all_output.filter(o => o.type === "function_call")
     }
     let output = all_output[0]
@@ -60,7 +69,7 @@ export function convert_response_to_fn(response) {
         try {
             function_arguments = JSON.parse(output.arguments)
         } catch (e) {
-            console.error("Encountered an error parsing function arguments for function", name, output.arguments )
+            console.error("Encountered an error parsing function arguments for function", name, output.arguments)
         }
         return {
             id,
@@ -70,13 +79,21 @@ export function convert_response_to_fn(response) {
     }
 }
 
-export function log_message_handler(message) {
-    const data = parse_message(message)
-    if (process.env.TAU_LOGGING) {
-        console.info(data.type)
-    }
-    if (data.error) console.error(data.error)
-}
+// export function log_message_handler(message, name) {
+//     const data = parse_message(message)
+//     if (data.error) {
+//         if (process.env.TAU_LOGGING)  {
+//             console.error(`τ`, name, `error log:`, data.error)
+//         } else {
+//             console.error(`τ`, name, `error log:`, data.error.message)
+//         }
+//     } else {
+//         if (process.env.TAU_LOGGING > 0) {
+//             console.info(`τ`, data.type)
+//         }
+
+//     }
+// }
 
 export function parse_message(message) {
     const message_string = message.toString();
