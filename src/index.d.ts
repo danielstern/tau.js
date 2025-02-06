@@ -7,6 +7,7 @@ export class ResponseArguments {
   tools: any[];
   tool_choice?: "required" | "auto" | "none";
   instructions: string;
+  inputs : any[];
 }
 
 /**

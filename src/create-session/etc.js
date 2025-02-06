@@ -3,12 +3,10 @@ export async function message_handler(ws, condition, callback) {
         let data = parse_message(message)
         if (condition(data)) {
             callback(data)
-            // resolver(data)
         }
     }
     ws.on("message", listener)
 }
-
 
 export function message_promise(ws, condition = () => true) {
     let promise_handler = resolve => {
@@ -36,8 +34,6 @@ export function convert_response_to_fn(response) {
     }
     if (all_output.length > 1) {
         console.info(JSON.stringify(all_output, null, 2))
-        // console.info(JSON.stringify(response, null, 2))
-        // throw new Error("Unexpected extra entries in response")
         console.info("Received unexpected second output from function response. Behavior when more than one output is returned is technically undefined. Reducing output array to include only function call.")
         all_output = all_output.filter(o => o.type === "function_call")
     }
@@ -81,6 +77,7 @@ export function log_message_handler(message) {
     }
     if (data.error) console.error(data.error)
 }
+
 export function parse_message(message) {
     const message_string = message.toString();
     const parsed_message = JSON.parse(message_string);

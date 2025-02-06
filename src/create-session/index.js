@@ -1,11 +1,11 @@
-import { 
+import {
     Subject
 } from "rxjs";
 import {
     accumulate_usage,
     compute_usage
 } from "../compute-usage/index.js";
-import { 
+import {
     create_openai_realtime_ws
 } from "../create-ws/index.js";
 import {
@@ -41,7 +41,6 @@ export async function create_session({
         tokens: {}
     }
 
-    // let previous_item_id = "root"
     let message_count = 0
     let job_count = 0
     let jobs = {}
@@ -49,6 +48,7 @@ export async function create_session({
     async function init() {
 
         await message_promise(ws, data => data.type === "session.created")
+        // note, if tools or other property is not correct, app can fail silently here
         await update_session({
             instructions,
             modalities: audio ? ["text", "audio"] : ["text"],
@@ -63,13 +63,11 @@ export async function create_session({
 
         message_handler(ws, data => data.type === "conversation.item.created", data => {
             if (data.item.content) {
-                
                 _conversation.push(data.item)
             }
         })
 
         message_handler(ws, data => data.type === "response.done", data => {
-            // console.info(data.response)
             let { output, conversation_id } = data.response
             if (conversation_id === null) return
             _conversation.push(output[0])
@@ -104,7 +102,6 @@ export async function create_session({
         let id = `tau-message-${++message_count}-${Date.now()}`
         send_ws({
             type: "conversation.item.create",
-            // previous_item_id,
             item: {
                 id,
                 type: "message",
@@ -118,7 +115,6 @@ export async function create_session({
             }
         })
 
-        // previous_item_id = id
         let data = await message_promise(ws, data => data.type === "conversation.item.created" && data.item.id === id)
         return data.item
     }
@@ -139,14 +135,19 @@ export async function create_session({
     }
 
     async function delete_conversation_item(item_id) {
-        send_ws({type:"conversation.item.delete", item_id})
+        send_ws({ type: "conversation.item.delete", item_id })
         await message_promise(ws, data => data.type === "conversation.item.deleted")
         _conversation = _conversation.map(a => {
             if (a.id !== item_id) return a
-            return { ...a, deleted : true}
+            return { ...a, deleted: true }
         })
     }
-
+    /**
+     * this function is neat but a little hard to maintain. right? beefy.
+     * @param {*} args 
+     * @param {*} meta 
+     * @returns 
+     */
     async function response(args = {}, meta = {}) {
         let {
             conversation = "auto",
@@ -186,32 +187,25 @@ export async function create_session({
         let total_compute_time = compute_time + prev_compute_time
 
         if (data.response.status === "failed") {
-            console.info("The request failed after", compute_time, "ms", "Attempting to retry...")
-            return await response (args, {
-                tries : tries + 1,
-                prev_compute_time : total_compute_time
+            console.warn("response.create request failed after", compute_time, "ms", "Attempting to retry...")
+            return await response(args, {
+                tries: tries + 1,
+                prev_compute_time: total_compute_time
             })
         }
-      
-        let usage = compute_usage({ data, realtime : true, mini })
+
+        let usage = compute_usage({ data, realtime: true, mini })
         let fn_data = convert_response_to_fn(data.response)
         _accumulated_usage = accumulate_usage(usage, _accumulated_usage)
-        return { 
-            ...fn_data, 
-            compute_time : total_compute_time, 
-            attempts : tries 
+        return {
+            ...fn_data,
+            compute_time: total_compute_time,
+            attempts: tries
         }
     }
 
-    
-    // async function until_not_firing() {
-    //     while (true) {
-    //         if (!is_firing) return true
-    //         await delay(10)
-    //     }
-    // }
     await init()
-
+ 
     return {
         user,
         system,
@@ -224,7 +218,6 @@ export async function create_session({
         get session() { return _session },
         get conversation() { return _conversation },
         get usage() { return _accumulated_usage },
-        get is_working() { return Object.keys(jobs).length > 0}
+        get is_working() { return Object.keys(jobs).length > 0 }
     }
-
 }
