@@ -15,12 +15,13 @@ import {
     parse_message
 } from "./etc.js";
 import delay from "delay"
+// import { create_debug_server } from "../create-debug-server/index.js";
+import WebSocket from "ws";
+
 
 let session_count = 0
 
 export async function create_session({
-    name = `tau-session-${++session_count}-${Date.now()}`,
-    api_key = null,
     audio = false,
     instructions = undefined,
     mini = false,
@@ -28,6 +29,10 @@ export async function create_session({
     tools = [],
     tool_choice = "none",
     voice = "sage",
+} = {},{
+    api_key = null,
+    name = `tau-session-${++session_count}-${Date.now()}`,
+    debug = true
 } = {}) {
 
     let ws = null
@@ -47,6 +52,7 @@ export async function create_session({
     let _closed = false
     let job_count = 0
     let jobs = {}
+    let _debug_server = null
 
     function error_handler(error) {
         console.error("error...!!!", error)
@@ -61,6 +67,26 @@ export async function create_session({
         // dunno, there's a good idea here
         const data = parse_message(message)
         event$.next(data)
+    }
+
+    let debug_ws = null
+
+    async function init_debug() {
+        console.info("initializing debug...", name)
+        debug_ws = new WebSocket("ws://localhost:30020/provider")
+        await message_promise(debug_ws, data => data.type === "provider.identity.requested")
+        send_ws(debug_ws, {type : "provider.identity", data : {name}})
+        await message_promise(debug_ws, data => data.type === "provider.identity.accepted")
+        console.info("Done")
+        // debug_ws.on("message",(message)=>{
+        //     let data = parse_message(message)
+        //     console.info(data)
+        // })
+
+        event$.subscribe(data => {
+            send_ws(debug_ws, data)
+            // debug_ws.send(JSON.stringify(data))
+        })
     }
 
 
@@ -114,6 +140,16 @@ export async function create_session({
             _conversations["auto"].push(item)
         })
 
+        if (debug) {
+            init_debug(ws)
+        }
+
+        // if (debug) {
+        //     console.info("debug enabled, starting debug server")
+        //     _debug_server = await create_debug_server()
+            
+        // }
+
         return ws
     }
 
@@ -121,15 +157,22 @@ export async function create_session({
         ws.off('message', log_message_handler)
         ws.off('message', event_message_handler)
         ws.off('close', close_handler)
+        // if (_debug_server) {
+        //     _debug_server.close()
+        // }
+        if (debug_ws) {
+            debug_ws.close()
+        }
         ws.close()
     }
 
-    function send_ws(data) {
+    function send_ws(ws, data) {
         ws.send(JSON.stringify(data))
     }
+    
 
     async function update_session(updates) {
-        send_ws({ type: "session.update", session: updates });
+        send_ws(ws, { type: "session.update", session: updates });
         let { session } = await message_promise(ws, data => data.type === "session.updated")
         _session = session
     }
@@ -138,7 +181,7 @@ export async function create_session({
         if (_closed) throw new Error("Closed.")
         let type = role === "user" || role === "system" ? "input_text" : "text"
         let id = `tau-message-${++message_count}-${Date.now()}` // necessary
-        send_ws({
+        send_ws(ws, {
             type: "conversation.item.create",
             item: {
                 id,
@@ -168,12 +211,12 @@ export async function create_session({
     }
 
     async function cancel_response() {
-        send_ws({ type: "response.cancel" })
+        send_ws(ws, { type: "response.cancel" })
         return await message_promise(ws, data => data.type === "response.done")
     }
 
     async function delete_conversation_item(item_id) {
-        send_ws({ type: "conversation.item.delete", item_id })
+        send_ws(ws, { type: "conversation.item.delete", item_id })
         await message_promise(ws, data => data.type === "conversation.item.deleted")
         _conversations["auto"] = _conversations["auto"].map(a => {
             if (a.id !== item_id) return a
@@ -206,7 +249,7 @@ export async function create_session({
         if (tries > max_tries) {
             throw new Error("Failed to get response after max tries")
         }
-        send_ws({
+        send_ws(ws, {
             type: "response.create",
             response: {
                 conversation,

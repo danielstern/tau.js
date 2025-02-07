@@ -11,24 +11,12 @@ export async function message_handler(ws, condition, callback) {
 export function message_promise(ws, condition = () => true) {
     let promise_handler = (resolve, _reject) => {
         let listener = (message) => {
-            // try {
-
             let data = parse_message(message)
             if (condition(data)) {
                 ws.off("message", listener)
                 resolve(data)
             }
-            // } catch (e) {
-            // console.info("Unexpected error", e)
-            // reject(error)
-            // }
         }
-        // let resolver = (data) => {
-        //     console.info(data)
-        //     ws.off("message", listener)
-        //     resolve(data)
-        // }
-        // console.info("Add listener")
         ws.on("message", listener)
     }
     return new Promise(promise_handler)
@@ -54,6 +42,10 @@ export function convert_response_to_fn(response) {
     let id = output.id
     if (output.type === "message") {
         let content = output.content[0]
+        if (!content) {
+            console.error(JSON.stringify(response, null, 2))
+            throw new Error("No content was returned")
+        }
         let message = content.text || content.transcript
         return {
             id,
@@ -78,22 +70,6 @@ export function convert_response_to_fn(response) {
         }
     }
 }
-
-// export function log_message_handler(message, name) {
-//     const data = parse_message(message)
-//     if (data.error) {
-//         if (process.env.TAU_LOGGING)  {
-//             console.error(`τ`, name, `error log:`, data.error)
-//         } else {
-//             console.error(`τ`, name, `error log:`, data.error.message)
-//         }
-//     } else {
-//         if (process.env.TAU_LOGGING > 0) {
-//             console.info(`τ`, data.type)
-//         }
-
-//     }
-// }
 
 export function parse_message(message) {
     const message_string = message.toString();
