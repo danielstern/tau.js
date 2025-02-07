@@ -74,10 +74,10 @@ export async function create_session({
     async function init_debug() {
         console.info("initializing debug...", name)
         debug_ws = new WebSocket("ws://localhost:30020/provider")
-        await message_promise(debug_ws, data => data.type === "provider.identity.requested")
-        send_ws(debug_ws, {type : "provider.identity", data : {name}})
-        await message_promise(debug_ws, data => data.type === "provider.identity.accepted")
-        console.info("Done")
+        // await message_promise(debug_ws, data => data.type === "provider.identity.requested")
+        // send_ws(debug_ws, {type : "provider.identity", data : {name}})
+        // await message_promise(debug_ws, data => data.type === "provider.identity.accepted")
+        // console.info("Done")
         // debug_ws.on("message",(message)=>{
         //     let data = parse_message(message)
         //     console.info(data)

@@ -4,24 +4,6 @@ export enum Role {
   system = "system"
 }
 
-export enum ResponseAudioVoice {
-  alloy = "alloy",
-  ash = "ash",
-  ballad = "ballad",
-  coral = "coral",
-  echo = "echo",
-  shimmer = "shimmer",
-  sage = "sage",
-  verse = "verse"
-}
-
-// export enum ToolChoice {
-//   required = "required",
-//   auto = "auto",
-//   none = "none"
-// }
-
-
 export enum Conversation {
   auto = "auto",
   none = "none"
@@ -55,7 +37,7 @@ export class SessionResponse {
  * 
  */
 export class ResponseArguments {
-  conversation: Conversation
+  conversation: "auto" | "none"
   tools: Tool[]
   /**
    * Influences whether the model responds with a text/audio message, a function call, or both.
@@ -111,6 +93,19 @@ export class Session {
 //  * @param {ResponseAudioVoice} [options.voice] - TODO.
 //  */
 
+
+export enum ResponseAudioVoice {
+  alloy = "alloy",
+  ash = "ash",
+  ballad = "ballad",
+  coral = "coral",
+  echo = "echo",
+  shimmer = "shimmer",
+  sage = "sage",
+  verse = "verse"
+}
+
+
 export class CreateSessionOptions {
   api_key?: string;
   audio?: boolean;
@@ -125,7 +120,8 @@ export class CreateSessionOptions {
   temperature?: number;
   // tools?: any[];
   // tool_choice?: ToolChoice;
-  voice?: ResponseAudioVoice;
+  voice?: "alloy" | "ash" | "ballad" | "coral" | "echo" | "shimmer" | "sage" | "verse"
+  // voice?: ResponseAudioVoice;
   // conversation: Conversation
   tools: Tool[]
   /**
