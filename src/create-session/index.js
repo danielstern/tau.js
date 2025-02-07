@@ -17,6 +17,8 @@ import {
 import delay from "delay"
 // import { create_debug_server } from "../create-debug-server/index.js";
 import WebSocket from "ws";
+import { load_md } from "../etc.js";
+import * as docs from "../../docs/spec.js"
 
 
 let session_count = 0
@@ -29,10 +31,10 @@ export async function create_session({
     tools = [],
     tool_choice = "none",
     voice = "sage",
-} = {},{
+} = {}, {
     api_key = null,
     name = `tau-session-${++session_count}-${Date.now()}`,
-    debug = true
+    debug = false
 } = {}) {
 
     let ws = null
@@ -52,7 +54,6 @@ export async function create_session({
     let _closed = false
     let job_count = 0
     let jobs = {}
-    let _debug_server = null
 
     function error_handler(error) {
         console.error("error...!!!", error)
@@ -64,7 +65,6 @@ export async function create_session({
     }
 
     function event_message_handler(message) {
-        // dunno, there's a good idea here
         const data = parse_message(message)
         event$.next(data)
     }
@@ -73,20 +73,20 @@ export async function create_session({
 
     async function init_debug() {
         console.info("initializing debug...", name)
-        debug_ws = new WebSocket("ws://localhost:30020/provider")
-        // await message_promise(debug_ws, data => data.type === "provider.identity.requested")
-        // send_ws(debug_ws, {type : "provider.identity", data : {name}})
-        // await message_promise(debug_ws, data => data.type === "provider.identity.accepted")
-        // console.info("Done")
-        // debug_ws.on("message",(message)=>{
-        //     let data = parse_message(message)
-        //     console.info(data)
-        // })
+        let debug_server_url = `ws://localhost:30020`
+        debug_ws = new WebSocket(`${debug_server_url}/provider`)
+        debug_ws.on("error", () => {
+            // console.info("websocket error")
+            throw new Error(docs.no_debug_server)
+            // throw new Error(load_md("error/no-debug-server"))
+        })
 
         event$.subscribe(data => {
             send_ws(debug_ws, data)
             // debug_ws.send(JSON.stringify(data))
         })
+        // }
+
     }
 
 
@@ -97,10 +97,10 @@ export async function create_session({
             return console.error(`τ`, name, `error log:`, data.error.message)
         }
 
-        
+
         if (process.env.TAU_LOGGING > 1) {
-            let clone = {...data}
-            if (clone.delta) clone.delta = clone.delta.slice(0,8) + "..."
+            let clone = { ...data }
+            if (clone.delta) clone.delta = clone.delta.slice(0, 8) + "..."
             return console.info(`τ`, name, clone)
         }
         if (process.env.TAU_LOGGING > 0) return console.info(`τ`, name, data.type)
@@ -147,7 +147,7 @@ export async function create_session({
         // if (debug) {
         //     console.info("debug enabled, starting debug server")
         //     _debug_server = await create_debug_server()
-            
+
         // }
 
         return ws
@@ -169,7 +169,7 @@ export async function create_session({
     function send_ws(ws, data) {
         ws.send(JSON.stringify(data))
     }
-    
+
 
     async function update_session(updates) {
         send_ws(ws, { type: "session.update", session: updates });
@@ -263,17 +263,17 @@ export async function create_session({
         })
 
         let _done = false
-        let timeout_promise = async function(){
+        let timeout_promise = async function () {
             let time_remaining = max_total_time
             while (time_remaining > 0) {
                 await delay(100)
                 time_remaining -= 100
                 if (_done) {
-                    return { error : false }
+                    return { error: false }
                 }
             }
             // await delay(max_time)
-            return { error : true }
+            return { error: true }
         }
 
         let first_audio_delta_compute_time = null

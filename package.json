@@ -1,6 +1,6 @@
 {
     "name": "tau",
-    "version": "0.0.2",
+    "version": "0.0.3-pre-alpha",
     "description": "A local Node.js library",
     "main": "src/index.js",
     "type": "module",
