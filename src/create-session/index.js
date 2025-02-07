@@ -1,3 +1,4 @@
+import delay from "delay";
 import {
     Subject
 } from "rxjs";
@@ -14,12 +15,8 @@ import {
     message_promise,
     parse_message
 } from "./etc.js";
-import delay from "delay"
-// import { create_debug_server } from "../create-debug-server/index.js";
 import WebSocket from "ws";
-import { load_md } from "../etc.js";
-import * as docs from "../../docs/spec.js"
-
+import * as docs from "../../docs/spec.js";
 
 let session_count = 0
 
@@ -40,23 +37,12 @@ export async function create_session({
     let ws = null
     let event$ = new Subject()
     let _session = null
-    let _conversations = {
-        "auto": []
-    }
-    let _accumulated_usage = {
-        computed: {
-            total_usage_cost: 0
-        },
-        tokens: {}
-    }
-
+    let _conversations = {"auto": []}
+    let _accumulated_usage = null
     let message_count = 0
     let _closed = false
-    let job_count = 0
-    let jobs = {}
 
     function error_handler(error) {
-        console.error("error...!!!", error)
         throw new Error(`τ ${name} encountered an error.`)
     }
 
@@ -72,21 +58,15 @@ export async function create_session({
     let debug_ws = null
 
     async function init_debug() {
-        console.info("initializing debug...", name)
+        
         let debug_server_url = `ws://localhost:30020`
         debug_ws = new WebSocket(`${debug_server_url}/provider`)
         debug_ws.on("error", () => {
-            // console.info("websocket error")
             throw new Error(docs.no_debug_server)
-            // throw new Error(load_md("error/no-debug-server"))
         })
-
         event$.subscribe(data => {
             send_ws(debug_ws, data)
-            // debug_ws.send(JSON.stringify(data))
         })
-        // }
-
     }
 
 
@@ -96,7 +76,6 @@ export async function create_session({
             if (process.env.TAU_LOGGING) return console.error(`τ`, name, `error log`, data.error)
             return console.error(`τ`, name, `error log:`, data.error.message)
         }
-
 
         if (process.env.TAU_LOGGING > 1) {
             let clone = { ...data }
@@ -144,12 +123,6 @@ export async function create_session({
             init_debug(ws)
         }
 
-        // if (debug) {
-        //     console.info("debug enabled, starting debug server")
-        //     _debug_server = await create_debug_server()
-
-        // }
-
         return ws
     }
 
@@ -157,9 +130,6 @@ export async function create_session({
         ws.off('message', log_message_handler)
         ws.off('message', event_message_handler)
         ws.off('close', close_handler)
-        // if (_debug_server) {
-        //     _debug_server.close()
-        // }
         if (debug_ws) {
             debug_ws.close()
         }
@@ -241,8 +211,8 @@ export async function create_session({
             tries = 1
         } = meta
         let modalities = audio ? ["text", "audio"] : ["text"]
-        let job_id = `job-${++job_count}`
-        jobs[job_id] = true
+        // let job_id = `job-${++job_count}`
+        // jobs[job_id] = true
         let start_time = Date.now()
         let max_tries = 5
         let max_total_time = audio ? 120000 : 25000
@@ -272,7 +242,6 @@ export async function create_session({
                     return { error: false }
                 }
             }
-            // await delay(max_time)
             return { error: true }
         }
 
@@ -297,7 +266,7 @@ export async function create_session({
         if (data.error) {
             throw new Error("Request timed out")
         }
-        delete jobs[job_id]
+        // delete jobs[job_id]
         if (data.type === "response.cancelled") {
             return null
         }
@@ -339,6 +308,6 @@ export async function create_session({
         get session() { return _session },
         get conversations() { return _conversations },
         get usage() { return _accumulated_usage },
-        get is_working() { return Object.keys(jobs).length > 0 }
+        // get is_working() { return Object.keys(jobs).length > 0 }
     }
 }

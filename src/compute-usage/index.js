@@ -76,6 +76,14 @@ export function compute_usage({
 }
 
 export function accumulate_usage(usage, accumulated) {
+    if (!accumulated) {
+        accumulated = {
+            computed: {
+                total_usage_cost: 0
+            },
+            tokens: {}
+        }
+    }
     for (let key in usage) {
         let { tokens, usage_cost, cpm } = usage[key]
         accumulated.computed.total_usage_cost += usage_cost
