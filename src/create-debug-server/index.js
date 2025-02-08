@@ -1,7 +1,7 @@
-import { WebSocketServer } from 'ws';
 import cors from 'cors';
 import express from 'express';
-import { message_promise, parse_message } from '../create-session/etc.js';
+import { WebSocketServer } from 'ws';
+import { parse_message } from '../create-session/etc.js';
 
 export async function create_debug_server() {
     const app = express();
@@ -12,7 +12,6 @@ export async function create_debug_server() {
     
     const wss = new WebSocketServer({ noServer: true });
 
-    // let providers = []
     let consumers = []
     let consumer_count = 0
     
@@ -21,25 +20,16 @@ export async function create_debug_server() {
         let { url } = request
         if (url === "/provider") {
 
-            // ws.isAlive = true; // i dont think this does anything
             ws.send(JSON.stringify({type : "connection.complete"}))
-            // ws.send(JSON.stringify({type : "provider.identity.requested"}))
-            // let { data } = await message_promise(ws, data => data.type === "provider.identity")
-            // let { name } = data
-            // providers.push({name, ws})
-            // ws.send(JSON.stringify({type : "provider.identity.accepted"}))
             ws.on("message", message => {
                 let data = parse_message(message)
                 for (let consumer of consumers) {
                     let out_data = { ...data}
-                    // console.info("Sending data", message)
-                    // consumer.ws.send(message)
                     consumer.ws.send(JSON.stringify(out_data))
                 }
             })
             ws.on('close', () => {
                 console.log("A client disconnected");
-                // delete providers[name]
             });
         } else if (url === "/consumer") {
             ws.send(JSON.stringify({type : "connection.complete"}))

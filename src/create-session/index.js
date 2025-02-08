@@ -11,12 +11,12 @@ import {
 } from "../create-ws/index.js";
 import {
     convert_response_to_fn,
+    init_debug,
     message_handler,
     message_promise,
-    parse_message
+    parse_message,
+    send_ws
 } from "./etc.js";
-import WebSocket from "ws";
-import * as docs from "../../docs/spec.js";
 
 let session_count = 0
 
@@ -31,7 +31,7 @@ export async function create_session({
 } = {}, {
     api_key = null,
     name = `tau-session-${++session_count}-${Date.now()}`,
-    debug = false
+    debug = process.env.TAU_DEBUG_MODE ?? false
 } = {}) {
 
     let ws = null
@@ -41,6 +41,7 @@ export async function create_session({
     let _accumulated_usage = null
     let message_count = 0
     let _closed = false
+    let debug_ws = null
 
     function error_handler(error) {
         throw new Error(`τ ${name} encountered an error.`)
@@ -54,21 +55,6 @@ export async function create_session({
         const data = parse_message(message)
         event$.next(data)
     }
-
-    let debug_ws = null
-
-    async function init_debug() {
-        
-        let debug_server_url = `ws://localhost:30020`
-        debug_ws = new WebSocket(`${debug_server_url}/provider`)
-        debug_ws.on("error", () => {
-            throw new Error(docs.no_debug_server)
-        })
-        event$.subscribe(data => {
-            send_ws(debug_ws, data)
-        })
-    }
-
 
     function log_message_handler(message) {
         const data = parse_message(message)
@@ -120,7 +106,7 @@ export async function create_session({
         })
 
         if (debug) {
-            init_debug(ws)
+            debug_ws = init_debug(event$, name)
         }
 
         return ws
@@ -135,11 +121,6 @@ export async function create_session({
         }
         ws.close()
     }
-
-    function send_ws(ws, data) {
-        ws.send(JSON.stringify(data))
-    }
-
 
     async function update_session(updates) {
         send_ws(ws, { type: "session.update", session: updates });
@@ -211,8 +192,6 @@ export async function create_session({
             tries = 1
         } = meta
         let modalities = audio ? ["text", "audio"] : ["text"]
-        // let job_id = `job-${++job_count}`
-        // jobs[job_id] = true
         let start_time = Date.now()
         let max_tries = 5
         let max_total_time = audio ? 120000 : 25000

@@ -11,7 +11,6 @@ export function create_openai_realtime_ws({
     mini
 }) {
     if (API_KEY && !api_key) api_key = API_KEY
-    // if (!api_key) throw new Error(load_md("docs/error/no-api-key"))
     if (!api_key) throw new Error(`You must specify an API key to this library. 
 Specify the \`api_key\` argument when creating a new session or set the OPENAI_API_KEY environment variable.`)
 

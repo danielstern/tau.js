@@ -76,3 +76,27 @@ export function parse_message(message) {
     const parsed_message = JSON.parse(message_string);
     return parsed_message
 }
+
+import WebSocket from "ws";
+import * as docs from "../../docs/spec.js";
+
+export function init_debug(event$, name) {
+    let debug = true    
+    let debug_server_url = process.env.TAU_DEBUG_SERVER_URL ?? `ws://localhost:30020`
+    let debug_ws = new WebSocket(`${debug_server_url}/provider`)
+    debug_ws.on("error", () => {
+        console.error(docs.no_debug_server)
+        debug = false
+        return
+    })
+    event$.subscribe(data => {
+        if (!debug) return
+        send_ws(debug_ws, {session_id : name, ...data} )
+    })
+
+    return debug_ws
+}
+
+export function send_ws(ws, data) {
+    ws.send(JSON.stringify(data))
+}
