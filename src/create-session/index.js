@@ -106,7 +106,8 @@ export async function create_session({
         })
 
         if (debug) {
-            debug_ws = init_debug(event$, name)
+            console.info(_session)
+            debug_ws = init_debug(event$, name, _session)
         }
 
         return ws
@@ -184,14 +185,15 @@ export async function create_session({
             instructions = undefined,
             tools = undefined,
             tool_choice = undefined,
-            audio = true,
+            // audio : inner_audio = undefined,
             output_audio_format = "pcm16"
         } = args
         let {
             prev_compute_time = 0,
             tries = 1
         } = meta
-        let modalities = audio ? ["text", "audio"] : ["text"]
+        // if (inner_audio === undefined) inner_audio = audio
+        // let modalities = inner_audio ? ["text", "audio"] : ["text"]
         let start_time = Date.now()
         let max_tries = 5
         let max_total_time = audio ? 120000 : 25000
@@ -202,7 +204,7 @@ export async function create_session({
             type: "response.create",
             response: {
                 conversation,
-                modalities,
+                // modalities,
                 output_audio_format,
                 instructions,
                 input,

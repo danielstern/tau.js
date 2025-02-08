@@ -80,7 +80,7 @@ export function parse_message(message) {
 import WebSocket from "ws";
 import * as docs from "../../docs/spec.js";
 
-export function init_debug(event$, name) {
+export function init_debug(event$, name, session) {
     let debug = true    
     let debug_server_url = process.env.TAU_DEBUG_SERVER_URL ?? `ws://localhost:30020`
     let debug_ws = new WebSocket(`${debug_server_url}/provider`)
@@ -91,7 +91,7 @@ export function init_debug(event$, name) {
     })
     event$.subscribe(data => {
         if (!debug) return
-        send_ws(debug_ws, {session_id : name, ...data} )
+        send_ws(debug_ws, {session_id : name, ...data, session} )
     })
 
     return debug_ws
