@@ -107,7 +107,7 @@ export async function create_session({
 
         if (debug) {
             console.info(_session)
-            debug_ws = init_debug(event$, name, _session)
+            debug_ws = await init_debug(event$, name, _session)
         }
 
         return ws

@@ -80,10 +80,12 @@ export function parse_message(message) {
 import WebSocket from "ws";
 import * as docs from "../../docs/spec.js";
 
-export function init_debug(event$, name, session) {
+export async function init_debug(event$, name, session) {
     let debug = true    
     let debug_server_url = process.env.TAU_DEBUG_SERVER_URL ?? `ws://localhost:30020`
     let debug_ws = new WebSocket(`${debug_server_url}/provider`)
+    await message_promise(debug_ws, data => data.type === "connection.complete")
+    console.info("Connected to debug server")
     debug_ws.on("error", () => {
         console.error(docs.no_debug_server)
         debug = false
