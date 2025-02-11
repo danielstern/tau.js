@@ -1,4 +1,8 @@
-export async function message_handler(ws, condition, callback) {
+
+import WebSocket from "ws";
+import * as docs from "../../docs/spec.js";
+
+export function message_handler(ws, condition, callback) {
     let listener = (message) => {
         let data = parse_message(message)
         if (condition(data)) {
@@ -6,6 +10,7 @@ export async function message_handler(ws, condition, callback) {
         }
     }
     ws.on("message", listener)
+    return () => ws.off("message", listener)
 }
 
 export function message_promise(ws, condition = () => true) {
@@ -21,6 +26,10 @@ export function message_promise(ws, condition = () => true) {
     }
     return new Promise(promise_handler)
 }
+
+// export async function data_type_promise(ws, type) {
+//     return await message_promise(ws, data => data.type === type)
+// }
 
 
 export function convert_response_to_fn(response) {
@@ -77,22 +86,19 @@ export function parse_message(message) {
     return parsed_message
 }
 
-import WebSocket from "ws";
-import * as docs from "../../docs/spec.js";
-
 export async function init_debug(event$, name, session) {
-    let debug = true    
+    // let debug = true    
     let debug_server_url = process.env.TAU_DEBUG_SERVER_URL ?? `ws://localhost:30020`
     let debug_ws = new WebSocket(`${debug_server_url}/provider`)
-    await message_promise(debug_ws, data => data.type === "connection.complete")
-    console.info("Connected to debug server")
     debug_ws.on("error", () => {
-        console.error(docs.no_debug_server)
-        debug = false
+        throw new Error(docs.no_debug_server)
+        // debug = false
         return
     })
+    await message_promise(debug_ws, data => data.type === "connection.complete")
+    console.info("Connected to debug server")
     event$.subscribe(data => {
-        if (!debug) return
+        // if (!debug) return
         send_ws(debug_ws, {session_id : name, ...data, session} )
     })
 
@@ -101,4 +107,21 @@ export async function init_debug(event$, name, session) {
 
 export function send_ws(ws, data) {
     ws.send(JSON.stringify(data))
+}
+
+export function log_message_handler_factory(name) {
+    return function log_message_handler(message) {
+        const data = parse_message(message)
+        if (data.error) {
+            if (process.env.TAU_LOGGING) return console.error(`τ`, name, `error log`, data.error)
+            return console.error(`τ`, name, `error log:`, data.error.message)
+        }
+    
+        if (process.env.TAU_LOGGING > 1) {
+            let clone = { ...data }
+            if (clone.delta) clone.delta = clone.delta.slice(0, 8) + "..."
+            return console.info(`τ`, name, clone)
+        }
+        if (process.env.TAU_LOGGING > 0) return console.info(`τ`, name, data.type)
+    }
 }

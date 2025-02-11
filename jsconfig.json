@@ -5,7 +5,9 @@
       "baseUrl": ".",
       "paths": {
         "tau": ["src"]
-      }
+      },
+      "checkJs": false,
+      "allowJs": false  
     },
     "include": ["src/**/*"]
   }

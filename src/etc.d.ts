@@ -17,4 +17,16 @@ export declare function load_md(
     path : string,
     override_dir? : string
 ): string;
-  
+
+/**
+ * Returns a promise that resolves when the user inputs something into the CLI and presses enter.
+ * Good for testing.
+ */
+export declare function user_tty() : Promise<string>
+
+/**
+ * Invokes `.response()` on the provided session and returns a promise that resolves after the *total duration of the audio generated in the response.* This is distinct from how long it takes for the response to be generated.
+ * 
+ * Useful for testing purposes.
+ */
+export declare function audio_promise(session : Session) : Promise<void>

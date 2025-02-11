@@ -4,11 +4,11 @@
     "description": "A local Node.js library",
     "main": "src/index.js",
     "type": "module",
-    "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1"
+    "bin": {
+        "tau": "./bin/cli.js"
     },
     "exports": {
-        ".": "./src/index.js",
+        ".": "./src/create-session/index.js",
         "./utility": "./src/etc.js",
         "./debug": "./src/create-debug-server/index.js"
     },
@@ -22,5 +22,8 @@
         "js-yaml": "^4.1.0",
         "rxjs": "^7.8.1",
         "ws": "^8.18.0"
+    },
+    "devDependencies": {
+        "open": "^10.1.0"
     }
 }
