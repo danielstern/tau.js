@@ -77,7 +77,13 @@ export async function create_session({
             voice,
         })
 
-        if (debug) debug_ws = await init_debug(event$, name, _session)
+        if (debug) debug_ws = await init_debug(
+            event$, 
+            name, 
+            _session, 
+            create_audio,
+            response
+        )
 
         return ws
     }
@@ -124,6 +130,33 @@ export async function create_session({
         return data.item
     }
 
+    async function create_audio({ bytes }) {
+        if (!bytes) return console.warn("No audio input detected")
+        let type = "input_audio"
+        let id = `tau-audio-${++message_count}-${Date.now()}` // necessary to await completion
+        console.info("Bytes?", bytes)
+        send_ws(ws, {
+            type: "conversation.item.create",
+            item: {
+                id,
+                type: "message",
+                role : "user",
+                content: [
+                    {
+                        type,
+                        audio : bytes
+                    },
+                ]
+            }
+        })
+
+        let data = await message_promise(
+            ws,
+            data => data.type === "conversation.item.created" && data.item.id === id
+        )
+        return data.item
+    }
+
     async function user(message) {
         return await create({ message, role: "user" })
     }
@@ -152,18 +185,7 @@ export async function create_session({
     } = {}) {
     // async function response(args = {}, meta = {}) {
         if (_closed) throw new Error("Closed.")
-        // let {
-        //     conversation = undefined,
-        //     input = undefined,
-        //     instructions = undefined,
-        //     tools = undefined,
-        //     tool_choice = undefined,
-        //     modalities = undefined,
-        //     output_audio_format = undefined
-        // } = args
-        // let {
-          
-        // } = meta
+
 
         if (tries > max_tries) {
             console.warn(`Failed to get a response after ${tries} tries. Auto-cancelling response.`)
@@ -174,15 +196,7 @@ export async function create_session({
         let total_duration = 0
         let start_time = Date.now()
         let response_has_completed = false
-        // let response_arguments = {
-        //     conversation,
-        //     modalities,
-        //     output_audio_format,
-        //     instructions,
-        //     input,
-        //     tools,
-        //     tool_choice
-        // }
+
         if (process.env.TAU_LOGGING > 0) console.info("Response arguments", response_arguments)
         send_ws(ws, {
             type: "response.create",

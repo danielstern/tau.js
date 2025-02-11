@@ -86,14 +86,29 @@ export function parse_message(message) {
     return parsed_message
 }
 
-export async function init_debug(event$, name, session) {
+export async function init_debug(
+    event$, 
+    name, 
+    session,
+    create_audio,
+    response
+) {
     // let debug = true    
     let debug_server_url = process.env.TAU_DEBUG_SERVER_URL ?? `ws://localhost:30020`
     let debug_ws = new WebSocket(`${debug_server_url}/provider`)
     debug_ws.on("error", () => {
         throw new Error(docs.no_debug_server)
         // debug = false
-        return
+        // return
+    })
+    debug_ws.on("message", async (message) => {
+        let data = parse_message(message)
+        // console.info(data.type)
+        if (data.type === "user.audio.input") {
+            await create_audio({bytes:data.bytes})
+            await response()
+        }
+
     })
     await message_promise(debug_ws, data => data.type === "connection.complete")
     console.info("Connected to debug server")

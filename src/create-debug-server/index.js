@@ -13,12 +13,16 @@ export async function create_debug_server() {
     const wss = new WebSocketServer({ noServer: true });
 
     let consumers = []
+    let providers = []
     let consumer_count = 0
     
     wss.on('connection', async (ws,request) => {
         console.log("A new client connected", request.url)
         let { url } = request
         if (url === "/provider") {
+
+            let id = `providers-${++consumer_count}`
+            providers.push({id,ws})
 
             ws.send(JSON.stringify({type : "connection.complete"}))
             ws.on("message", message => {
@@ -35,6 +39,22 @@ export async function create_debug_server() {
             ws.send(JSON.stringify({type : "connection.complete"}))
             let id = `consumer-${++consumer_count}`
             consumers.push({ws, id})
+            ws.on("message", message => {
+                let data = parse_message(message)
+                let type = data.type
+                if (type === "user.audio.input") {
+                    let bytes = data.bytes
+                    console.info("Got audio bytes",bytes.length)
+                    for (let provider of providers) {
+                        let out_data = { ...data}
+                        provider.ws.send(JSON.stringify(out_data))
+                    }
+                }
+                // for (let consumer of consumers) {
+                //     let out_data = { ...data}
+                //     consumer.ws.send(JSON.stringify(out_data))
+                // }
+            })
             ws.on("close", () => {
                 consumers = consumers.filter(c => c.id !== id)
             })
