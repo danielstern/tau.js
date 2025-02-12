@@ -53,7 +53,7 @@ export type Session = {}
 /**
  * Create a new real-time model session.
  */
-export declare function create_session(session_options: {
+export declare async function create_session(session_options: {
     /**
      * Identifier of the voice with which to output audio.
      * 

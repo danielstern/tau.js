@@ -30,3 +30,5 @@ export declare function user_tty() : Promise<string>
  * Useful for testing purposes.
  */
 export declare function audio_promise(session : Session) : Promise<void>
+
+export declare function save_deltas_as_wav(deltas : string[], filename : string) : void

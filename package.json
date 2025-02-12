@@ -1,6 +1,6 @@
 {
     "name": "tau",
-    "version": "0.0.3-pre-alpha",
+    "version": "1.0.0-alpha",
     "description": "A local Node.js library",
     "main": "src/index.js",
     "type": "module",
@@ -14,16 +14,16 @@
     },
     "keywords": [],
     "author": "",
-    "license": "ISC",
+    "license": "MIT",
     "dependencies": {
-        "cors": "^2.8.5",
         "delay": "^6.0.0",
-        "express": "^4.21.2",
         "js-yaml": "^4.1.0",
-        "rxjs": "^7.8.1",
-        "ws": "^8.18.0"
+        "rxjs": "^7.8.1"
     },
     "devDependencies": {
-        "open": "^10.1.0"
+        "open": "^10.1.0",
+        "cors": "^2.8.5",
+        "express": "^4.21.2",
+        "ws": "^8.18.0"
     }
 }

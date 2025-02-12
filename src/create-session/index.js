@@ -40,7 +40,7 @@ export async function create_session({
     // mini = false,
     model = "4o",
     name = `tau-session-${++session_count}-${Date.now()}`,
-    debug = process.env.TAU_DEBUG_MODE ?? false
+    debug = process.env.TAU_DEBUG ?? false
 } = {}) {
 
     let ws = null
@@ -280,6 +280,7 @@ export async function create_session({
             first_text_delta_compute_time,
             first_audio_delta_compute_time,
             attempts: tries,
+            audio_deltas : deltas,
             total_audio_duration: total_duration
         }
     }
