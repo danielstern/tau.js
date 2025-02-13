@@ -81,3 +81,20 @@ export async function create_debug_server() {
 
     return server
 }
+
+import WebSocket from "ws";
+
+export function handle_debugger_client_input(handler) {
+    let debug_server_url = process.env.TAU_DEBUG_SERVER_URL ?? `ws://localhost:30020`
+    let debug_ws = new WebSocket(`${debug_server_url}/provider`)
+
+    debug_ws.on("message", (message) => {
+        let data = parse_message(message)
+        handler(data)
+    })
+
+    return ()=>{
+        debug_ws.removeAllListeners()
+        debug_ws.close()
+    }
+}

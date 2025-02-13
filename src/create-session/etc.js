@@ -38,45 +38,61 @@ export function convert_response_to_fn(response) {
     if (!all_output) {
         throw new Error("A response was returned with no output value.")
     }
-    if (all_output.length > 1) {
-        console.warn(JSON.stringify(all_output, null, 2))
-        console.warn("Received unexpected second output from function response. Behavior when more than one output is returned is technically undefined. Reducing output array to include only function call.")
-        all_output = all_output.filter(o => o.type === "function_call")
-    }
-    let output = all_output[0]
-    if (!output) {
-        console.warn("A response was returned with no output", response)
-        throw new Error("A response was returned with no output value.")
-    }
-    let id = output.id
-    if (output.type === "message") {
-        let content = output.content[0]
-        if (!content) {
-            console.error(JSON.stringify(response, null, 2))
-            throw new Error("No content was returned")
-        }
-        let message = content.text || content.transcript
-        return {
-            id,
-            name: "message",
-            arguments: {
-                text: message
+    // if (all_output.length > 1) {
+    //     console.warn(JSON.stringify(all_output, null, 2))
+    //     console.warn("Received unexpected second output from function response. Behavior when more than one output is returned is technically undefined. Reducing output array to include only function call.")
+    //     all_output = all_output.filter(o => o.type === "function_call")
+    //     throw new Error("Unhandled")
+    // }
+    // let output = all_output[0]
+    // if (!output) {
+    //     console.warn("A response was returned with no output", response)
+    //     throw new Error("A response was returned with no output value.")
+    // }
+    let function_call = null
+    let transcript = null
+    for (let output of all_output) {
+
+        // let id = output.id
+
+        console.info("Type?", output.type)
+
+        if (output.type === "message") {
+            let content = output.content[0]
+            if (!content) {
+                console.error(JSON.stringify(response, null, 2))
+                // throw new Error("No content was returned") // todo ???
             }
+            let message = content.text || content.transcript
+            transcript = message
+            // return {
+            //     id,
+            //     name: "message",
+            //     arguments: {
+            //         text: message
+            //     }
+            // }
+        }
+        if (output.type === "function_call") {
+            let name = output.name
+            let parameters = null
+            try {
+                parameters = JSON.parse(output.arguments)
+            } catch (e) {
+                console.error("Encountered an error parsing function arguments for function", name, output.arguments)
+            }
+            function_call = { name, parameters }
+            // return {
+            //     id,
+            //     name,
+            //     arguments: function_arguments
+            // }
         }
     }
-    if (output.type === "function_call") {
-        let name = output.name
-        let function_arguments = null
-        try {
-            function_arguments = JSON.parse(output.arguments)
-        } catch (e) {
-            console.error("Encountered an error parsing function arguments for function", name, output.arguments)
-        }
-        return {
-            id,
-            name,
-            arguments: function_arguments
-        }
+
+    return {
+        function_call,
+        transcript
     }
 }
 
@@ -86,13 +102,14 @@ export function parse_message(message) {
     return parsed_message
 }
 
-export async function init_debug(
+export async function init_debug({
     event$, 
     name, 
     session,
     create_audio,
-    response
-) {
+    response,
+    autoplay_debug
+}) {
     // let debug = true    
     let debug_server_url = process.env.TAU_DEBUG_SERVER_URL ?? `ws://localhost:30020`
     let debug_ws = new WebSocket(`${debug_server_url}/provider`)
@@ -101,15 +118,15 @@ export async function init_debug(
         // debug = false
         // return
     })
-    debug_ws.on("message", async (message) => {
-        let data = parse_message(message)
-        // console.info(data.type)
-        if (data.type === "user.audio.input") {
-            await create_audio({bytes:data.bytes})
-            await response()
-        }
-
-    })
+    if (autoplay_debug) {
+        debug_ws.on("message", async (message) => {
+            let data = parse_message(message)
+            if (data.type === "user.audio.input") {
+                await create_audio({bytes:data.bytes})
+                await response()
+            }
+        })
+    }
     await message_promise(debug_ws, data => data.type === "connection.complete")
     console.info("Connected to debug server")
     event$.subscribe(data => {

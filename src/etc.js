@@ -1,12 +1,12 @@
+import delay from "delay";
 import {
+    createWriteStream,
     readFileSync,
-    writeFileSync,
-    createWriteStream
+    writeFileSync
 } from "fs";
-import path from "path";
 import yaml from "js-yaml";
+import path from "path";
 import readline from "readline";
-import delay from "delay"
 
 export function load_md(filename = "", override_dir = null) {
     const dir = override_dir ? `src/${override_dir}` : "docs"
@@ -122,21 +122,10 @@ export async function save_deltas_as_wav(deltas, filename = `tmp/voice-${Date.no
             filename
         )
 
-        // file_stream.write(audio_buffer)
-        // file_stream.on("finish", () => {
-        //     convert_pcm_to_wav(
-        //         pcm_file,
-        //         filename
-        //     )
-        // })
-
-        // file_stream.end()
-
     } catch (e) {
         console.error(e)
         throw new Error("Encountered an error saving an audio file. Are you sure the folder to which you are trying to save the audio exists?")
     }
-
 
 
 }

@@ -40,11 +40,14 @@ export async function create_session({
     // mini = false,
     model = "4o",
     name = `tau-session-${++session_count}-${Date.now()}`,
-    debug = process.env.TAU_DEBUG ?? false
+    debug = process.env.TAU_DEBUG ?? false,
+    autoplay_debug = process.env.TAU_AUTOPLAY_DEBUG ?? false
 } = {}) {
 
     let ws = null
     let event$ = new Subject()
+    let response$ = new Subject()
+    let function_call$ = new Subject()
     let _session = null
     let _accumulated_usage = null
     let message_count = 0
@@ -77,13 +80,14 @@ export async function create_session({
             voice,
         })
 
-        if (debug) debug_ws = await init_debug(
+        if (debug) debug_ws = await init_debug({
             event$, 
             name, 
-            _session, 
+            session : _session, 
             create_audio,
-            response
-        )
+            response,
+            autoplay_debug
+        })
 
         return ws
     }
@@ -134,7 +138,7 @@ export async function create_session({
         if (!bytes) return console.warn("No audio input detected")
         let type = "input_audio"
         let id = `tau-audio-${++message_count}-${Date.now()}` // necessary to await completion
-        console.info("Bytes?", bytes)
+        // console.info("Bytes?", bytes)
         send_ws(ws, {
             type: "conversation.item.create",
             item: {
@@ -261,12 +265,15 @@ export async function create_session({
         let total_compute_time = compute_time + prev_compute_time
 
         if (data.response.status === "failed") {
+            console.info(data.response)
             console.warn(
                 "response.create request failed after", compute_time, "ms", "Attempting to retry..."
             )
-            return await response(args, {
+            return await response(response_arguments, {
                 tries: tries + 1,
-                prev_compute_time: total_compute_time
+                prev_compute_time: total_compute_time,
+                max_time_to_respond,
+                max_tries
             })
         }
 
@@ -274,15 +281,20 @@ export async function create_session({
         let fn_data = convert_response_to_fn(data.response)
         _accumulated_usage = accumulate_usage(usage, _accumulated_usage)
 
-        return {
+
+        let out_data = {
             ...fn_data,
             compute_time: total_compute_time,
             first_text_delta_compute_time,
             first_audio_delta_compute_time,
             attempts: tries,
-            audio_deltas : deltas,
+            // audio_deltas : deltas,
+            get audio_deltas(){ return deltas }, 
             total_audio_duration: total_duration
         }
+        response$.next(out_data)
+
+        return out_data
     }
 
     await init()
@@ -293,12 +305,13 @@ export async function create_session({
         assistant,
         response,
         close,
+        create_audio,
         cancel_response,
         delete_conversation_item,
         event$,
+        response$,
         get name() { return name },
         get session() { return _session },
-        // get conversations() { return _conversations },
         get usage() { return _accumulated_usage },
     }
 }

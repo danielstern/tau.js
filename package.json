@@ -1,7 +1,7 @@
 {
-    "name": "tau",
+    "name": "tau.js",
     "version": "1.0.0-alpha",
-    "description": "A local Node.js library",
+    "description": "Realtime model session manager",
     "main": "src/index.js",
     "type": "module",
     "bin": {
@@ -13,7 +13,7 @@
         "./debug": "./src/create-debug-server/index.js"
     },
     "keywords": [],
-    "author": "",
+    "author": "daniel j. stern (code whisperer)",
     "license": "MIT",
     "dependencies": {
         "delay": "^6.0.0",
