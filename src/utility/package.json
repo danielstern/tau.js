@@ -1,0 +1,14 @@
+{
+    "name": "@tau-js/utility",
+    "version": "1.0.1-beta",
+    "main": "etc.js",
+    "type": "module",
+    "author" : "daniel j. stern (code whisperer)",
+    "exports": {
+        ".": "./etc.js"
+    },
+    "dependencies": {
+        "delay": "^6.0.0",
+        "js-yaml": "^4.1.0"
+    }
+}

@@ -1,0 +1,16 @@
+{
+    "name": "@tau-js/debug",
+    "version": "1.0.0-alpha",
+    "main": "index.js",
+    "type": "module",
+    "author" : "daniel j. stern (code whisperer)",
+    "exports": {
+        ".": "./index.js"
+    },
+    "devDependencies": {
+        "cors": "^2.8.5",
+        "express": "^4.21.2",
+        "open": "^10.1.0",
+        "ws": "^8.18.0"
+    }
+}

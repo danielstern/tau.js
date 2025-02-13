@@ -1,0 +1,21 @@
+{
+    "name": "@tau-js/core",
+    "version": "1.0.0-alpha",
+    "main": "index.js",
+    "type": "module",
+    "author" : "daniel j. stern (code whisperer)",
+    "exports": {
+        ".": "./index.js"
+    },
+    "dependencies": {
+        "delay": "^6.0.0",
+        "js-yaml": "^4.1.0",
+        "rxjs": "^7.8.1"
+    },
+    "devDependencies": {
+        "cors": "^2.8.5",
+        "express": "^4.21.2",
+        "open": "^10.1.0",
+        "ws": "^8.18.0"
+    }
+}

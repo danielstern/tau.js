@@ -3,11 +3,10 @@ import {
     API_KEY,
     REALTIME_API_MINI_URL,
     REALTIME_API_URL
-} from "./spec.js";
+} from "./config.js";
 
 export function create_openai_realtime_ws({
     api_key,
-    // mini,
     model,
     name
 }) {

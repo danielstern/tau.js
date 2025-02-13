@@ -47,7 +47,7 @@ export async function create_session({
     let ws = null
     let event$ = new Subject()
     let response$ = new Subject()
-    let function_call$ = new Subject()
+    // let function_call$ = new Subject()
     let _session = null
     let _accumulated_usage = null
     let message_count = 0

@@ -2,7 +2,8 @@ import delay from "delay";
 import {
     createWriteStream,
     readFileSync,
-    writeFileSync
+    writeFileSync,
+    unlink
 } from "fs";
 import yaml from "js-yaml";
 import path from "path";
@@ -73,13 +74,11 @@ export async function audio_promise(session) {
 }
 
 function convert_pcm_to_wav(
-    // input_file,
     pcm_data,
     output_file,
     sample_rate = 24000,
     channels = 1
 ) {
-    // let pcm_data = readFileSync(input_file)
     let wav_header = Buffer.alloc(44)
     let byte_rate = sample_rate * channels * 2
     let block_align = channels * 2
@@ -102,14 +101,9 @@ function convert_pcm_to_wav(
 }
 
 export async function save_deltas_as_wav(deltas, filename = `tmp/voice-${Date.now()}.wav`) {
-    let file_stream = null
     let buffer_queue = []
-    let pcm_file = null
 
     try {
-        pcm_file = "tmp/tmp.pcm"
-        file_stream = createWriteStream(pcm_file)
-
         for (let delta of deltas) {
             let audio_data = Buffer.from(delta, "base64")
             buffer_queue.push(audio_data)
@@ -121,11 +115,8 @@ export async function save_deltas_as_wav(deltas, filename = `tmp/voice-${Date.no
             audio_buffer,
             filename
         )
-
     } catch (e) {
         console.error(e)
         throw new Error("Encountered an error saving an audio file. Are you sure the folder to which you are trying to save the audio exists?")
     }
-
-
 }

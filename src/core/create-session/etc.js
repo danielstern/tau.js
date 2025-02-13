@@ -1,6 +1,6 @@
 
 import WebSocket from "ws";
-import * as docs from "../../docs/spec.js";
+// import * as docs from "../../docs/spec.js";
 
 export function message_handler(ws, condition, callback) {
     let listener = (message) => {
@@ -114,7 +114,13 @@ export async function init_debug({
     let debug_server_url = process.env.TAU_DEBUG_SERVER_URL ?? `ws://localhost:30020`
     let debug_ws = new WebSocket(`${debug_server_url}/provider`)
     debug_ws.on("error", () => {
-        throw new Error(docs.no_debug_server)
+        // throw new Error(docs.no_debug_server)
+        throw new Error(`Tried to connect to the debug server, but none was found at the specified URL.
+- If you don't want to run the debug server, make sure that \`debug\` is false when creating a new session
+- If you do want to connect to the debug server, make sure it is running. To run the debug server
+use \`tau debug start\`:
+npm install -g tau
+tau debug start`)
         // debug = false
         // return
     })

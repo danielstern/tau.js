@@ -1,9 +1,7 @@
 <img style="margin-bottom:12px" src="https://storage.googleapis.com/owned-io-public-files/images/tau-logo.png">
 
 
-<img src="https://img.shields.io/badge/License-MIT-steelblue">
-<img src="https://img.shields.io/badge/version-alpha-orange">
-<img src="https://img.shields.io/badge/node-18.20.4-darkgreen">
+<img src="https://img.shields.io/badge/License-MIT-steelblue"><img src="https://img.shields.io/badge/version-alpha-orange"><img src="https://img.shields.io/badge/node-18.20.4-darkgreen">
 <div style="margin-bottom:20px"></div>
 
 # tau.js <img width=20px src="https://favicon-generator-1041699091324.us-central1.run.app/icon"> 
@@ -54,9 +52,7 @@ One of the most difficult parts of getting started with realtime audio is handli
 - **Input voice and get responses in realtime**
 - Review usage data
 <a href="https://owned.io/tau/debugger/" target="_blank">
-<!-- <div align="center"> -->
 <img  src="https://storage.googleapis.com/owned-io-public-files/images/2025-02-12%2006_51_21-tau.js%20debugger.png">
-<!-- </div> -->
 </a>
 
 
@@ -108,15 +104,17 @@ This will start a local debug server, as well as open the debug UI at <a href="h
 
 In order to enable audio playback and microphone access, you need to click on the debugger UI. 
 
-> The debug UI is still in development. You'll be able to run the debug UI locally, if desired, as part of future releases. You can still use `tau.js` without the debugger if you want an entirely localized experience.
+The debug UI is still in development. You'll be able to run the debug UI locally, if desired, as part of future releases. You can still use `tau.js` without the debugger if you want an entirely localized experience.
 
    
 
 Enable debug output from a tau session by passing `{ debug : true }` (see examples) or by setting the following environment variable:
 
 ```
-TAU_DEBUG=true # if enabled, sessions will automatically connect to debug server
-TAU_DEBUG_AUTOPLAY=true # if enabled, sessions will automatically respond to voice commands.
+# If enabled, sessions will automatically connect to debug server
+TAU_DEBUG=true
+# If enabled, sessions will automatically respond to voice commands. If this is not enabled you have to handle the user's debug voice input yourself (see examples.)
+TAU_DEBUG_AUTOPLAY=true 
 ```
 
 
@@ -124,17 +122,18 @@ TAU_DEBUG_AUTOPLAY=true # if enabled, sessions will automatically respond to voi
 ### Example: Creating a Simple Realtime Translator
 The example below is very simple but creates an effective and very fast universal translator. You can even specify how you want your translator to speak. 
     
-<!-- > Whether you specify instructions or not, if you provide voice input for a translation realtime model like the one below, it will copy your tone of voice and emphasis.  -->
 
 ```javascript
-import { create_session } from "tau"
+import { create_session } from "tau" // TODO update import
+//  todo make sure this work
 
 let session = await create_session({
     instructions : "You are translation assistant. Translate all user input.",
     modalities : ["text", "audio"],
     voice : "ash",
 },{
-    debug : "true"
+    debug : true,
+    debug_autoplay : true
 })
 
 await session.system("Translate user input into German. Speak in a friendly voice, loudly and clearly annunciating.")
@@ -145,7 +144,7 @@ await session.user("Excuse me, is this where I catch the train to the airport?")
 Realtime voice models (vocaloids) can produce surprisingly powerful and emotionally compelling audio. 
 
 ```javascript
-import { create_session } from "tau"
+import { create_session } from "tau" // TODO
 import { audio_promise } from "tau/utility"
 
 let session = await create_session({
@@ -187,7 +186,7 @@ This tutor will patiently work with any student to learn any target phrase in an
 
 ```javascript
 import { create_session } from "tau"
-import { handle_debugger_client_input } from "tau/debug"
+import { handle_debugger_client_input } from "tau/debug" // todo
 
 let target_language = "Mandarin"
 let target_phrase = "It's high noon."
@@ -250,3 +249,14 @@ Lead Developer / Lead Maintainer / Code Whisperer - Daniel J. Stern (daniel@hera
 
 ### Will `tau.js` support non-realtime models like `o1` or `4o`?
 No, `tau.js` is focused entirely on supporting realtime, websocket based. It will add support for additional realtime models as they come along.
+
+### Why do you use `snake_case`? Why do you use `let` instead of `const`? Should I adopt these style conventions?
+Yes. JavaScript is better this way and you should adopt these conventions.
+
+`snake_case` is much more versatile and readable than `camelCase`. Bless `python` for making it mainstream.
+
+`let` is two fewer characeters than `const`. More esoterically, `const` is just an ugly word that evokes discomfort, unpleasantness and perplexity. `let` is a pleasant word that evokes opportunity and freedom. Only use `const` in conjunction with all-uppercase variables. Never mix `let` and `const` declarations.
+
+```js
+export const API_KEY = process.env.API_KEY // acceptable const usage
+```

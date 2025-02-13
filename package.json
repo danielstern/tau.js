@@ -1,29 +1,25 @@
 {
     "name": "tau.js",
     "version": "1.0.0-alpha",
-    "description": "Realtime model session manager",
-    "main": "src/index.js",
+    "description": "realtime model session manager for working with fast, websocket ai connections.",
     "type": "module",
+    "workspaces" : [
+        "src/*"
+    ],
     "bin": {
         "tau": "./bin/cli.js"
     },
-    "exports": {
-        ".": "./src/create-session/index.js",
-        "./utility": "./src/etc.js",
-        "./debug": "./src/create-debug-server/index.js"
-    },
-    "keywords": [],
+    "keywords": [
+        "ai",
+        "realtime",
+        "4o-realtime",
+        "4o-mini-realtime",
+        "websockets"
+    ],
     "author": "daniel j. stern (code whisperer)",
-    "license": "MIT",
-    "dependencies": {
-        "delay": "^6.0.0",
-        "js-yaml": "^4.1.0",
-        "rxjs": "^7.8.1"
-    },
-    "devDependencies": {
-        "open": "^10.1.0",
-        "cors": "^2.8.5",
-        "express": "^4.21.2",
-        "ws": "^8.18.0"
-    }
+    "contributors": [{
+        "name": "daniel j. stern (code whisperer)",
+        "email": "daniel@herald.to"
+    }],
+    "license": "MIT"
 }
