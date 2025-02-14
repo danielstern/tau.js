@@ -76,6 +76,7 @@ export async function init_debug({
     create_audio,
     create_audio_stream,
     response,
+    debug_voice_in
     // autorespond
 }) {
     // let debug = true    
@@ -96,6 +97,7 @@ tau debug start`
     })
     // if (autorespond) {
         debug_ws.on("message", async (message) => {
+            if (!debug_voice_in) return
             let data = parse_message(message)
             if (data.type === "user.audio.input") {
                 await create_audio({ bytes: data.bytes })

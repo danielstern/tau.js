@@ -35,6 +35,7 @@ export async function create_session({
     model = "4o",
     name = `tau-session-${++session_count}-${Date.now()}`,
     debug = process.env.TAU_DEBUG ?? false,
+    debug_voice_in = true
     // autorespond = false
 } = {}) {
 
@@ -97,6 +98,7 @@ export async function create_session({
             create_audio,
             create_audio_stream : append_input_audio_buffer,
             response,
+            debug_voice_in
             // autorespond
         })
 

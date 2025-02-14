@@ -167,10 +167,10 @@ for (let line of [
 console.info(session.usage)
 session.close()
 ```
+[Listen to the output 🔊🤯](https://storage.googleapis.com/owned-io-public-files/images/voice-1739534240862.wav)
+<!-- <audio controls src="https://storage.googleapis.com/owned-io-public-files/images/voice-1739533651706.wav"></audio> -->
 
-<audio controls src="https://storage.googleapis.com/owned-io-public-files/images/voice-1739533651706.wav"></audio>
-
-### Example: Lanuage Tutor
+### Example: Language Tutor
 This tutor will patiently work with any student to learn any target phrase in any known language. It's very effective.
 
 ```javascript
@@ -206,19 +206,96 @@ handle_debugger_client_input(async data => {
     // Good effort! This time, focus on the tone of the word “正午”. It should have a falling-rising tone on "正" and a falling tone on "午". Let's try it again. "现在是正午。" Now, repeat it after me. 🤯🤯
 })
 ```
-### Environment Variables
-The simplest way to set your project-wide API Key is by setting the following environment variable.
 
+### Example: Function-calling Assistant
+This interesting example implements a real-time assistant which helps the user with simple tasks around the home.
+- The `silence_duration_ms` parameter dictates how long the model waits before responding. If this value is too high, then the model will appears low and unresponsive. But if it's too low, the model will cut in and interrupt the user, which is worse. However, when combined with non-vocalizing, function-calling models, a short time works very well
+- **Combining voice output with function calling in a single model works inconsistently, at best**. Vocaloids (voice-producing models) tend to get "in" to their roles after a few responses. Calling functions confuses them and results in suboptimal output for both voice and function calls. It's better to use multiple sessions, as in the below example.
+
+```javascript
+import { create_session } from "@tau-js/core"
+
+let name = `Rachel`
+
+let assistant = await create_session({
+    instructions : `You're an automated function calling unit designed to assist the user in household activities. Your name is ${name}.`,
+    modalities : ["text"],
+    temperature : 0.65,
+    turn_detection : {
+        type : "server_vad",
+        silence_duration_ms : 200
+    },
+    tools : [
+        {
+            name : "pass",
+            type : "function",
+            description : "Call this method by default when you fail to detect BOTH your name and the command in the user's input."
+        },
+        {
+            name : "turn_lights_on",
+            type : "function",
+            description : "Call this method when the user asks you to turn the lights on."
+        },
+        {
+            name : "turn_lights_off",
+            type : "function",
+            description : "Call this method when the user asks you to turn the lights off."
+        },
+        {
+            name : "you_are_welcome",
+            type : "function",
+            description : "Call this method to acknowledge when the user thanks you."
+        },
+    ],
+    tool_choice : "required"
+   
+}, {
+    model : "4o",
+    debug: true
+})
+
+await assistant.system(`Listen to the user's speech. The user may issue a command at any given time. If the user speaks your name in full, then speaks a command compatabile with an available function, call that function.`)
+
+let assistant_vocaloid = await create_session({
+    instructions : "You are the voice output model for another model.",
+    modalities : ["text","audio"],
+    voice : "shimmer"
+},{
+    model : "4o",
+    debug : true,
+    debug_voice_in : false
+})
+
+await assistant_vocaloid.system("Speak in a friedly, confident, refined british accent.")
+
+assistant.response$.subscribe(async data => {
+    console.info()
+    let name = data.function_call.name
+    console.info(`Calling function`, name)
+
+    if (name === "you_are_welcome") {
+        await assistant_vocaloid.system("Please say, 'You're most welcome!'")
+        await assistant_vocaloid.response()
+    }
+})
+
+// "I'm kinda tired."
+// > pass
+// "Rachel, can you turn the lights off please?"
+// > turns_lights_off (in under 900ms)
+// "Thank you, Rachel."
+// > "You are most welcome!" 🤯🤯🤯
+```
+
+
+# API Reference
+## Environment Variables
 ```sh
 # If provided, will be used as the API key for all sessions.
 OPENAI_API_KEY=sk-1234567890abcdefg
-# If enabled, sessions will automatically connect to debug server
+# If enabled, sessions will automatically connect to debug server. 
 TAU_DEBUG=true
 ```
-
-You can also pass the API Key in on a per-session basis by using the options interface (See #)
-
-# API Reference
 ## Session Reference 
 ### `async tau.create_session(options, config)`
 
