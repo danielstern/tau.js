@@ -36,7 +36,6 @@ export async function create_session({
     name = `tau-session-${++session_count}-${Date.now()}`,
     debug = process.env.TAU_DEBUG ?? false,
     debug_voice_in = true
-    // autorespond = false
 } = {}) {
 
     let ws = null
@@ -65,9 +64,7 @@ export async function create_session({
 
         ws.on("message", (message) => {
             let data = parse_message(message)
-            // console.info(data.type)
             if (data.type === "response.done") {
-                // console.info("handle response...")
                 let usage = compute_usage({ data, model })
                 let fn_data = convert_response_to_fn(data.response)
                 _accumulated_usage = accumulate_usage(usage, _accumulated_usage)
@@ -99,7 +96,6 @@ export async function create_session({
             create_audio_stream : append_input_audio_buffer,
             response,
             debug_voice_in
-            // autorespond
         })
 
         return ws

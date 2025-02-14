@@ -15,8 +15,6 @@ const costs = {
 }
 
 export function compute_usage({
-    // realtime,
-    // mini,
     model,
     data
 }) {
