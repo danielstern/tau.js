@@ -18,7 +18,7 @@ export async function create_debug_server() {
     let consumer_count = 0
     
     wss.on('connection', async (ws,request) => {
-        console.log("A new client connected", request.url)
+        console.log("A new client connected", request.url, true)
         let { url } = request
         if (url === "/provider") {
 
@@ -42,15 +42,16 @@ export async function create_debug_server() {
             consumers.push({ws, id})
             ws.on("message", message => {
                 let data = parse_message(message)
-                let type = data.type
-                if (type === "user.audio.input") {
-                    let bytes = data.bytes
-                    console.info("Got audio bytes",bytes.length)
+                // let out_data = { ...data}
+                // let type = data.type
+                // if (type === "user.audio.input" || type === "user.audio.stream") {
+                    // let bytes = data.bytes
+                    // console.info("Got audio bytes",bytes.length)
                     for (let provider of providers) {
-                        let out_data = { ...data}
-                        provider.ws.send(JSON.stringify(out_data))
+                        provider.ws.send(JSON.stringify(data))
+                        // provider.ws.send(JSON.stringify(out_data))
                     }
-                }
+                // }
             })
             ws.on("close", () => {
                 consumers = consumers.filter(c => c.id !== id)

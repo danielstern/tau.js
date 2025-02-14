@@ -74,8 +74,9 @@ export async function init_debug({
     name,
     session,
     create_audio,
+    create_audio_stream,
     response,
-    autorespond
+    // autorespond
 }) {
     // let debug = true    
     let debug_server_url = process.env.TAU_DEBUG_SERVER_URL ?? `ws://localhost:30020`
@@ -93,15 +94,18 @@ tau debug start`
         // debug = false
         // return
     })
-    if (autorespond) {
+    // if (autorespond) {
         debug_ws.on("message", async (message) => {
             let data = parse_message(message)
             if (data.type === "user.audio.input") {
                 await create_audio({ bytes: data.bytes })
-                await response()
+                // await response()
+            }
+            if (data.type === "user.audio.stream") {
+                await create_audio_stream({bytes : data.bytes})
             }
         })
-    }
+    // }
     await message_promise(debug_ws, data => data.type === "connection.complete")
     console.info("Connected to Debug Server.")
     event$.subscribe(data => {

@@ -14,6 +14,14 @@ type Model = "4o" | "4o-mini"
 type Modalities =  ["text"] | ["text","audio"] 
 type ApiKey = string
 type Name = string
+interface TurnDetection {
+    type : "server_vad",
+    threshold: number,
+    prefix_padding_ms : number,
+    silence_duration_ms : number,
+    create_response : boolean
+
+}
 interface Tool {
     /**
      * Name of the function or other tool.
@@ -92,7 +100,7 @@ export declare async function create_session(session_options: {
      * 
      * *This should be considered guidance for the model rather than hard rules as the model will sometimes ignore the tool_choice parameter.*
      */
-    tool_choice : ToolChoice
+    tool_choice? : ToolChoice
 
     /**
      * Specify an array of tools which are available to your model, typically functions that you define. 
@@ -100,7 +108,12 @@ export declare async function create_session(session_options: {
      * Functions are the only category of tool explicitly supported by this API. 
      * 
      */
-    tools : Tool[]
+    tools? : Tool[]
+
+    /**
+     * 
+     */
+    turn_detection? : TurnDetection
 
     /**
      * Specify whether to return text and audio, or just text.
@@ -133,13 +146,15 @@ export declare async function create_session(session_options: {
         name?: Name,
         /**
          * If enabled, the session will connect to the debug server. This can be used to listen to and debug session voice output in real time.
-         * 
-         * **Usage**
-         * - Start the debug server with `$ tau debug start`.
-         * - Open the debug UI: https://owned.io/tau/debugger/.
-         * - Any voice output from your session will be automatically played in the debug UI
+         * - Install the debug server with `npm install -g @tau-js/cli
+         * - Run the debug server with `tau debug start`
          */
         debug? : boolean
+        /**
+         * The debug server will not automatically generate a response whenever user voice input is received.
+            // TODO... VAD mode??
+         */
+        autorespond? : boolean
     })
     : Promise<{
         /**

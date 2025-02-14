@@ -24,9 +24,10 @@ let session_count = 0
 export async function create_session({
     modalities = ["text"],
     instructions = undefined,
-    temperature = undefined, 
+    temperature = undefined,
     max_response_output_tokens = undefined,
     tools = undefined,
+    turn_detection = undefined,
     tool_choice = "none",
     voice = "sage",
 } = {}, {
@@ -34,7 +35,7 @@ export async function create_session({
     model = "4o",
     name = `tau-session-${++session_count}-${Date.now()}`,
     debug = process.env.TAU_DEBUG ?? false,
-    autorespond = false
+    // autorespond = false
 } = {}) {
 
     let ws = null
@@ -61,10 +62,28 @@ export async function create_session({
             event$.next(data)
         })
 
+        ws.on("message", (message) => {
+            let data = parse_message(message)
+            // console.info(data.type)
+            if (data.type === "response.done") {
+                // console.info("handle response...")
+                let usage = compute_usage({ data, model })
+                let fn_data = convert_response_to_fn(data.response)
+                _accumulated_usage = accumulate_usage(usage, _accumulated_usage)
+                response$.next({
+                    ... fn_data, 
+                    usage
+                })
+
+            }
+
+        })
+
         await update_session({
             instructions,
             modalities,
             max_response_output_tokens,
+            turn_detection,
             tools,
             temperature,
             tool_choice,
@@ -72,12 +91,13 @@ export async function create_session({
         })
 
         if (debug) debug_ws = await init_debug({
-            event$, 
-            name, 
-            session : _session, 
+            event$,
+            name,
+            session: _session,
             create_audio,
+            create_audio_stream : append_input_audio_buffer,
             response,
-            autorespond
+            // autorespond
         })
 
         return ws
@@ -128,18 +148,18 @@ export async function create_session({
     async function create_audio({ bytes }) {
         if (!bytes) return console.warn("No audio input detected")
         let type = "input_audio"
-        let id = `tau-audio-${++message_count}-${Date.now()}` 
+        let id = `tau-audio-${++message_count}-${Date.now()}`
 
         send_ws(ws, {
             type: "conversation.item.create",
             item: {
                 id,
                 type: "message",
-                role : "user",
+                role: "user",
                 content: [
                     {
                         type,
-                        audio : bytes
+                        audio: bytes
                     },
                 ]
             }
@@ -151,6 +171,25 @@ export async function create_session({
         )
 
         return data.item
+    }
+
+    async function append_input_audio_buffer({ bytes }) {
+        if (!bytes) return console.warn("No audio input detected")
+        send_ws(ws, {
+            type: "input_audio_buffer.append",
+            audio: bytes
+        })
+    }
+
+    async function commit_input_audio_buffer() {
+        send_ws(ws, {
+            type: "input_audio_buffer.commit",
+        })
+
+        await message_promise(
+            ws,
+            data => data.type === "input_audio_buffer.committed"
+        )
     }
 
     async function user(message) {
@@ -185,7 +224,7 @@ export async function create_session({
             console.warn(`Failed to get a response after ${tries} tries. Auto-cancelling response.`)
             return null
         }
-        
+
         let deltas = []
         let total_duration = 0
         let start_time = Date.now()
@@ -278,11 +317,11 @@ export async function create_session({
             first_text_delta_compute_time,
             first_audio_delta_compute_time,
             attempts: tries,
-            get audio_deltas(){ return deltas }, 
+            get audio_deltas() { return deltas },
             total_audio_duration: total_duration
         }
 
-        response$.next(out_data)
+        // response$.next(out_data)
         return out_data
     }
 
@@ -295,6 +334,8 @@ export async function create_session({
         response,
         close,
         create_audio,
+        append_input_audio_buffer,
+        commit_input_audio_buffer,
         cancel_response,
         delete_conversation_item,
         event$,

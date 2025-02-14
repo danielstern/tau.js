@@ -51,6 +51,7 @@ One of the most difficult parts of getting started with realtime audio is handli
 - **Listen to incoming audio in real time**
 - **Input voice and get responses in realtime**
 - Review usage data
+
 <a href="https://owned.io/tau/debugger/" target="_blank">
 <img  src="https://storage.googleapis.com/owned-io-public-files/images/2025-02-12%2006_51_21-tau.js%20debugger.png">
 </a>
@@ -116,39 +117,35 @@ TAU_DEBUG=true
 ## Examples
 ### Example: Creating a Simple Realtime Translator
 The example below is very simple but creates an effective and very fast universal translator. You can even specify how you want your translator to speak. 
-    
-
+If you provide voice input to a translator like this, it will match the user's emphasis and tone of voice.
 ```javascript
-import { create_session } from "tau" // TODO update import
-//  todo make sure this work
-
+import { create_session } from "@tau-js/core"
 let session = await create_session({
     instructions : "You are translation assistant. Translate all user input.",
     modalities : ["text", "audio"],
     voice : "ash",
 },{
     debug : true,
-    autorespond : true
 })
 
 await session.system("Translate user input into German. Speak in a friendly voice, loudly and clearly annunciating.")
 await session.user("Excuse me, is this where I catch the train to the airport?")
+await session.response()
+// Entschuldigen Sie, ist das hier der Ort, wo ich den Zug zum Flughafen nehmen kann?
 ```
 
 ### Example: Creating a Dramatic Vocaloid
 Realtime voice models (vocaloids) can produce surprisingly powerful and emotionally compelling audio. 
 
 ```javascript
-import { create_session } from "tau" // TODO
-import { audio_promise } from "tau/utility"
+import { create_session } from "@tau-js/core"
+import { audio_promise, save_deltas_as_wav } from "@tau-js/utility"
 
 let session = await create_session({
     modalities : ["text", "audio"],
-    instructions: "",
-    temperature : 0.86,
+    instructions: "You are a dramatic acting vocaloid.",
     voice: "ash"
 }, {
-    name : "thespion-4.0",
     model : "4o",
     debug: true
 })
@@ -156,25 +153,22 @@ let session = await create_session({
 await session.system("Repeat after the user.")
 await session.system("Speak in a deep, raspy, brassy, assured Scottish brogue.")
 for (let line of [
-    "**SOFTLY, CONDESCENDING** I've seen things you people wouldn't believe. **DISMISSIVELY** Hmph.",
-    "**EXCITED, CONFIDINGLY** Attack ships on fire off th'shoulder of Orion!",
+    "**SOFTLY, ARROGANTLY** I've seen things you people wouldn't believe. **DISMISSIVELY** Hmph.",
+    "**EXCITED, FRIENDLY** Attack ships on fire off th'shoulder of Orion!",
     "**SADLY** I watched C-beams... glitter in the dark near the Tannhäuser Gate!",
     "**SADLY, CRYING, NOSTALGIC, WITH DRAMATIC TIMING** All those... moments will be lost... in time, like **CLEARS THROAT** tears... in rain.",
     "**CALMLY, ACCEPTING** Time... to die."
 ]) {
     await session.user(line)
-    /**
-     * Audio promise is a simple utility that resolves around when 
-     * the realtime voice response would finish playing if 
-     * it had started as soon as the first audio delta was returned. 
-     * It's useful, in conjunction with the debugger, for listening to long chains of realtime voice output. 
-     */
-    await audio_promise(session)
+    let response = await audio_promise(session)
+    save_deltas_as_wav(response.audio_deltas)
 }
 
 console.info(session.usage)
 session.close()
 ```
+
+<audio controls src="https://storage.googleapis.com/owned-io-public-files/images/voice-1739533651706.wav"></audio>
 
 ### Example: Lanuage Tutor
 This tutor will patiently work with any student to learn any target phrase in any known language. It's very effective.
@@ -213,11 +207,13 @@ handle_debugger_client_input(async data => {
 })
 ```
 ### Environment Variables
-<!-- It is simpler and more effective to define the `OPENAI_API_KEY` environment variable than to pass the API key in when creating a new session. -->
 The simplest way to set your project-wide API Key is by setting the following environment variable.
 
 ```sh
-OPENAI_API_KEY=<YOUR_API_KEY>
+# If provided, will be used as the API key for all sessions.
+OPENAI_API_KEY=sk-1234567890abcdefg
+# If enabled, sessions will automatically connect to debug server
+TAU_DEBUG=true
 ```
 
 You can also pass the API Key in on a per-session basis by using the options interface (See #)
@@ -244,14 +240,3 @@ Lead Developer / Lead Maintainer / Code Whisperer - Daniel J. Stern (daniel@hera
 
 ### Will `tau.js` support non-realtime models like `o1` or `4o`?
 No, `tau.js` is focused entirely on supporting realtime, websocket based. It will add support for additional realtime models as they come along.
-
-### Why do you use `snake_case`? Why do you use `let` instead of `const`? Should I adopt these style conventions?
-Yes. JavaScript is better this way and you should adopt these conventions.
-
-`snake_case` is much more versatile and readable than `camelCase`. Bless `python` for making it mainstream.
-
-`let` is two fewer characeters than `const`. More esoterically, `const` is just an ugly word that evokes discomfort, unpleasantness and perplexity. `let` is a pleasant word that evokes opportunity and freedom. Only use `const` in conjunction with all-uppercase variables. Never mix `let` and `const` declarations.
-
-```js
-export const API_KEY = process.env.API_KEY // acceptable const usage
-```
