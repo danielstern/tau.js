@@ -1,7 +1,8 @@
 import cors from 'cors';
 import express from 'express';
 import { WebSocketServer } from 'ws';
-import { parse_message } from '../create-session/etc.js'; //todo..? = ???
+import WebSocket from "ws";
+import { parse_message } from './etc.js';
 
 export async function create_debug_server() {
     const app = express();
@@ -50,10 +51,6 @@ export async function create_debug_server() {
                         provider.ws.send(JSON.stringify(out_data))
                     }
                 }
-                // for (let consumer of consumers) {
-                //     let out_data = { ...data}
-                //     consumer.ws.send(JSON.stringify(out_data))
-                // }
             })
             ws.on("close", () => {
                 consumers = consumers.filter(c => c.id !== id)
@@ -81,8 +78,6 @@ export async function create_debug_server() {
 
     return server
 }
-
-import WebSocket from "ws";
 
 export function handle_debugger_client_input(handler) {
     let debug_server_url = process.env.TAU_DEBUG_SERVER_URL ?? `ws://localhost:30020`

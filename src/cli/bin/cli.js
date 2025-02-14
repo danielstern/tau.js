@@ -1,6 +1,7 @@
 #!/usr/bin/env node
-
-import { create_debug_server } from "../src/create-debug-server/index.js";
+// bin/cli.js
+import { create_debug_server } from "@tau-js/debug";
+// import { create_debug_server } from "../src/create-debug-server/index.js";
 import open from "open"
 
 const args = process.argv.slice(2);

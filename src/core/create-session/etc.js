@@ -1,6 +1,5 @@
 
 import WebSocket from "ws";
-// import * as docs from "../../docs/spec.js";
 
 export function message_handler(ws, condition, callback) {
     let listener = (message) => {
@@ -27,51 +26,24 @@ export function message_promise(ws, condition = () => true) {
     return new Promise(promise_handler)
 }
 
-// export async function data_type_promise(ws, type) {
-//     return await message_promise(ws, data => data.type === type)
-// }
-
-
 export function convert_response_to_fn(response) {
 
     let all_output = response.output
     if (!all_output) {
         throw new Error("A response was returned with no output value.")
     }
-    // if (all_output.length > 1) {
-    //     console.warn(JSON.stringify(all_output, null, 2))
-    //     console.warn("Received unexpected second output from function response. Behavior when more than one output is returned is technically undefined. Reducing output array to include only function call.")
-    //     all_output = all_output.filter(o => o.type === "function_call")
-    //     throw new Error("Unhandled")
-    // }
-    // let output = all_output[0]
-    // if (!output) {
-    //     console.warn("A response was returned with no output", response)
-    //     throw new Error("A response was returned with no output value.")
-    // }
+
     let function_call = null
     let transcript = null
     for (let output of all_output) {
-
-        // let id = output.id
-
-        console.info("Type?", output.type)
 
         if (output.type === "message") {
             let content = output.content[0]
             if (!content) {
                 console.error(JSON.stringify(response, null, 2))
-                // throw new Error("No content was returned") // todo ???
             }
             let message = content.text || content.transcript
             transcript = message
-            // return {
-            //     id,
-            //     name: "message",
-            //     arguments: {
-            //         text: message
-            //     }
-            // }
         }
         if (output.type === "function_call") {
             let name = output.name
@@ -82,11 +54,6 @@ export function convert_response_to_fn(response) {
                 console.error("Encountered an error parsing function arguments for function", name, output.arguments)
             }
             function_call = { name, parameters }
-            // return {
-            //     id,
-            //     name,
-            //     arguments: function_arguments
-            // }
         }
     }
 
@@ -103,41 +70,42 @@ export function parse_message(message) {
 }
 
 export async function init_debug({
-    event$, 
-    name, 
+    event$,
+    name,
     session,
     create_audio,
     response,
-    autoplay_debug
+    autorespond
 }) {
     // let debug = true    
     let debug_server_url = process.env.TAU_DEBUG_SERVER_URL ?? `ws://localhost:30020`
     let debug_ws = new WebSocket(`${debug_server_url}/provider`)
     debug_ws.on("error", () => {
         // throw new Error(docs.no_debug_server)
-        throw new Error(`Tried to connect to the debug server, but none was found at the specified URL.
+        throw new Error(
+            `Tried to connect to the debug server, but none was found at the specified URL.
 - If you don't want to run the debug server, make sure that \`debug\` is false when creating a new session
 - If you do want to connect to the debug server, make sure it is running. To run the debug server
 use \`tau debug start\`:
 npm install -g tau
-tau debug start`)
+tau debug start`
+        )
         // debug = false
         // return
     })
-    if (autoplay_debug) {
+    if (autorespond) {
         debug_ws.on("message", async (message) => {
             let data = parse_message(message)
             if (data.type === "user.audio.input") {
-                await create_audio({bytes:data.bytes})
+                await create_audio({ bytes: data.bytes })
                 await response()
             }
         })
     }
     await message_promise(debug_ws, data => data.type === "connection.complete")
-    console.info("Connected to debug server")
+    console.info("Connected to Debug Server.")
     event$.subscribe(data => {
-        // if (!debug) return
-        send_ws(debug_ws, {session_id : name, ...data, session} )
+        send_ws(debug_ws, { session_id: name, ...data, session })
     })
 
     return debug_ws
@@ -154,7 +122,7 @@ export function log_message_handler_factory(name) {
             if (process.env.TAU_LOGGING) return console.error(`τ`, name, `error log`, data.error)
             return console.error(`τ`, name, `error log:`, data.error.message)
         }
-    
+
         if (process.env.TAU_LOGGING > 1) {
             let clone = { ...data }
             if (clone.delta) clone.delta = clone.delta.slice(0, 8) + "..."

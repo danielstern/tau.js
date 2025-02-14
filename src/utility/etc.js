@@ -1,9 +1,7 @@
 import delay from "delay";
 import {
-    createWriteStream,
     readFileSync,
-    writeFileSync,
-    unlink
+    writeFileSync
 } from "fs";
 import yaml from "js-yaml";
 import path from "path";

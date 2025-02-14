@@ -31,4 +31,7 @@ export declare function user_tty() : Promise<string>
  */
 export declare function audio_promise(session : Session) : Promise<void>
 
+/**
+ * Conerts an array of deltas into a wav file and play it. Only works once all the deltas are in, which makes this suitable mostly for archival and development purposes. 
+ */
 export declare function save_deltas_as_wav(deltas : string[], filename : string) : void

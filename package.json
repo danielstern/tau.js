@@ -3,7 +3,7 @@
     "version": "1.0.0-alpha",
     "description": "realtime model session manager for working with fast, websocket ai connections.",
     "type": "module",
-    "workspaces" : [
+    "workspaces": [
         "src/*"
     ],
     "bin": {
@@ -17,9 +17,11 @@
         "websockets"
     ],
     "author": "daniel j. stern (code whisperer)",
-    "contributors": [{
-        "name": "daniel j. stern (code whisperer)",
-        "email": "daniel@herald.to"
-    }],
+    "contributors": [
+        {
+            "name": "daniel j. stern (code whisperer)",
+            "email": "daniel@herald.to"
+        }
+    ],
     "license": "MIT"
 }

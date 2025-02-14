@@ -21,10 +21,6 @@ export function compute_usage({
     data
 }) {
     let mini = model === "4o" ? false : true
-    // if (!realtime) {
-    // throw new Error("No completions cost computing configured")
-    // }
-    // if (realtime) {
     let { usage } = data.response
     let {
         input_token_details,
@@ -74,7 +70,6 @@ export function compute_usage({
     }
 
     return summary
-    // }
 }
 
 export function accumulate_usage(usage, accumulated) {
@@ -99,16 +94,4 @@ export function accumulate_usage(usage, accumulated) {
     }
 
     return accumulated
-}
-
-export function accumulate_compute_time(accumulator, compute_time) {
-
-    accumulator.total_responses += 1
-    accumulator.total_response_time += compute_time
-    accumulator.average_response_time = ~~(
-        accumulator.total_response_time /
-        accumulator.total_responses
-    )
-
-    return accumulator
 }

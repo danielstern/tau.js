@@ -21,12 +21,6 @@ import {
 
 let session_count = 0
 
-/**
- * Creates a rad session, dude.
- * @param {*} param0 
- * @param {*} param1 
- * @returns 
- */
 export async function create_session({
     modalities = ["text"],
     instructions = undefined,
@@ -37,28 +31,25 @@ export async function create_session({
     voice = "sage",
 } = {}, {
     api_key = null,
-    // mini = false,
     model = "4o",
     name = `tau-session-${++session_count}-${Date.now()}`,
     debug = process.env.TAU_DEBUG ?? false,
-    autoplay_debug = process.env.TAU_AUTOPLAY_DEBUG ?? false
+    autorespond = false
 } = {}) {
 
     let ws = null
     let event$ = new Subject()
     let response$ = new Subject()
-    // let function_call$ = new Subject()
     let _session = null
     let _accumulated_usage = null
-    let message_count = 0
     let _closed = false
+    let message_count = 0
     let debug_ws = null
 
     async function init() {
         ws = create_openai_realtime_ws({
             api_key,
             model,
-            // mini,
             name
         })
 
@@ -86,7 +77,7 @@ export async function create_session({
             session : _session, 
             create_audio,
             response,
-            autoplay_debug
+            autorespond
         })
 
         return ws
@@ -111,7 +102,7 @@ export async function create_session({
     async function create({ message, role }) {
         if (_closed) throw new Error("Closed.")
         let type = role === "user" || role === "system" ? "input_text" : "text"
-        let id = `tau-message-${++message_count}-${Date.now()}` // necessary to await completion
+        let id = `tau-message-${++message_count}-${Date.now()}`
         send_ws(ws, {
             type: "conversation.item.create",
             item: {
@@ -137,8 +128,8 @@ export async function create_session({
     async function create_audio({ bytes }) {
         if (!bytes) return console.warn("No audio input detected")
         let type = "input_audio"
-        let id = `tau-audio-${++message_count}-${Date.now()}` // necessary to await completion
-        // console.info("Bytes?", bytes)
+        let id = `tau-audio-${++message_count}-${Date.now()}` 
+
         send_ws(ws, {
             type: "conversation.item.create",
             item: {
@@ -158,6 +149,7 @@ export async function create_session({
             ws,
             data => data.type === "conversation.item.created" && data.item.id === id
         )
+
         return data.item
     }
 
@@ -187,9 +179,7 @@ export async function create_session({
         max_time_to_respond = 60000,
         max_tries = 3
     } = {}) {
-    // async function response(args = {}, meta = {}) {
         if (_closed) throw new Error("Closed.")
-
 
         if (tries > max_tries) {
             console.warn(`Failed to get a response after ${tries} tries. Auto-cancelling response.`)
@@ -254,7 +244,8 @@ export async function create_session({
         response_has_completed = true
 
         if (data.error) {
-            throw new Error("Request timed out")
+            console.error("The request timed out.")
+            return null
         }
 
         if (data.type === "response.cancelled") {
@@ -281,19 +272,17 @@ export async function create_session({
         let fn_data = convert_response_to_fn(data.response)
         _accumulated_usage = accumulate_usage(usage, _accumulated_usage)
 
-
         let out_data = {
             ...fn_data,
             compute_time: total_compute_time,
             first_text_delta_compute_time,
             first_audio_delta_compute_time,
             attempts: tries,
-            // audio_deltas : deltas,
             get audio_deltas(){ return deltas }, 
             total_audio_duration: total_duration
         }
-        response$.next(out_data)
 
+        response$.next(out_data)
         return out_data
     }
 

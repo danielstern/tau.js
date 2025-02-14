@@ -12,11 +12,11 @@
 With `tau.js`, Starting a session and generating a voice response is as simple as:
 
 ```javascript
-import { create_session } from "tau"
+import { create_session } from "@tau/core"
 
 let session = await create_session()
 await session.system("Whenever prompted to respond, state a different teaching of the Sun Tzu.")
-let data = await session.response()
+await session.response()
 
 // "The supreme art of war is to subdue the enemy without fighting."
 ```
@@ -106,17 +106,12 @@ In order to enable audio playback and microphone access, you need to click on th
 
 The debug UI is still in development. You'll be able to run the debug UI locally, if desired, as part of future releases. You can still use `tau.js` without the debugger if you want an entirely localized experience.
 
-   
-
 Enable debug output from a tau session by passing `{ debug : true }` (see examples) or by setting the following environment variable:
 
 ```
 # If enabled, sessions will automatically connect to debug server
 TAU_DEBUG=true
-# If enabled, sessions will automatically respond to voice commands. If this is not enabled you have to handle the user's debug voice input yourself (see examples.)
-TAU_DEBUG_AUTOPLAY=true 
 ```
-
 
 ## Examples
 ### Example: Creating a Simple Realtime Translator
@@ -133,7 +128,7 @@ let session = await create_session({
     voice : "ash",
 },{
     debug : true,
-    debug_autoplay : true
+    autorespond : true
 })
 
 await session.system("Translate user input into German. Speak in a friendly voice, loudly and clearly annunciating.")
