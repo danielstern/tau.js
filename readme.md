@@ -171,45 +171,53 @@ session.close()
 <!-- <audio controls src="https://storage.googleapis.com/owned-io-public-files/images/voice-1739533651706.wav"></audio> -->
 
 ### Example: Language Tutor
-This tutor will patiently work with any student to learn any target phrase in any known language. It's very effective.
+This tutor will patiently work with any student to learn any target phrase in any known language. 
+
+The tutor is able to listen to the user's pronunciation and provide customized and very helpful feedback.
+
+
 
 ```javascript
-import { create_session } from "tau"
-import { handle_debugger_client_input } from "tau/debug" // todo
+import { create_session } from "@tau-js/core"
 
-let target_language = "Mandarin"
-let target_phrase = "It's high noon."
+let target_language = "Japanese"
+let target_phrase = "Two is enough, really!"
 
 let tutor = await create_session({
-    instructions : `You're a friendly, helpful language tutor who is helping the user learn the ${target_language} language. Assume they have no previous knowledge of the target language. Speak all instructions in English.`,
+    instructions : `You're a friendly, helpful language tutor who is helping the user learn the ${target_language} language. Assume they have no previous knowledge of the target language. Speak all instructions in English. Your task is to help the user improve their pronunciation of the target phrase.`,
     modalities : ["text","audio"],
     temperature : 0.69,
     voice: "ash",
-   
+    turn_detection : {
+        type : "server_vad",
+        silence_duration_ms : 800
+    }
+    
 }, {
-    model : "4o",
+    model : "4o-mini",
     debug: true
 })
 
-let target_prompt = `The target phrase is: '${target_phrase}'. The target language is ${target_language}`
-await tutor.system(target_prompt)
+await tutor.system(`The target phrase is: '${target_phrase}'. The target language is ${target_language}`)
 await tutor.system("Speak the target phrase in English. Then translate the target phrase into the target language and repeat it once. Finally, ask the user to speak the phrase 2-3 times.")
+
 await tutor.response()
+await tutor.system(`
+    The user will now speak the target phrase. If the user's input is not clear enough to interpret, ask them to repeat themselves more clearly.
 
-handle_debugger_client_input(async data => {
+    Identify **one** area of the user's pronunciation to improve upon (don't overwhelm the user with multiple pieces of feedback at once), instruct the user on how to improve, and ask them to repeat the target phrase again. Always end your response by repeating the target phrase.
 
-    if (data.type !== "user.audio.input") return
-    await tutor.create_audio({bytes:data.bytes})
-    await tutor.response({
-        instructions : `Analyze the user's input and provide one imperative suggestion on how they can improve their pronunciation. Focus on one key are to improve upon at a time, even if there are multiple issues that need to be addressed. Quickly explain the improvement then speak the phrase in the target language again. Finally, ask the user to speak the phrase again. This process will continuously repeat (the user will exit the program when they are satisfied.) **Always** end your response by speaking the target phrase.`
-    })
-    // Good effort! This time, focus on the tone of the word “正午”. It should have a falling-rising tone on "正" and a falling tone on "午". Let's try it again. "现在是正午。" Now, repeat it after me. 🤯🤯
-})
+    Then, identify a **different** area of pronunciation to improve upon. and repeat the above process.
+
+    Never conclude the conversation or change the target phrase. The goal is refine the target phrase to perfection and beyond.
+`)
+
+// Your pronunciation is quite good! Let's focus on the pitch accent for the word 「十分」 (jūbun). Make sure to emphasize the first syllable, "jū," and keep the second syllable, "bun," softer. This way, the word flows naturally and clearly. Please try saying the phrase again: 「二つで十分だよ！」🍜🍜🍜
 ```
 
 ### Example: Function-calling Assistant
 This interesting example implements a real-time assistant which helps the user with simple tasks around the home.
-- The `silence_duration_ms` parameter dictates how long the model waits before responding. If this value is too high, then the model will appears low and unresponsive. But if it's too low, the model will cut in and interrupt the user, which is worse. However, when combined with non-vocalizing, function-calling models, a short time works very well
+- The `silence_duration_ms` parameter dictates how long the model waits before responding. If this value is too high, then the model seems slow and unresponsive. But if it's too low, the model will cut in and interrupt the user, which is even worse. However, when combined with non-vocalizing, function-calling models, a short time works very well. 
 - **Combining voice output with function calling in a single model works inconsistently, at best**. Vocaloids (voice-producing models) tend to get "in" to their roles after a few responses. Calling functions confuses them and results in suboptimal output for both voice and function calls. It's better to use multiple sessions, as in the below example.
 
 ```javascript
@@ -285,6 +293,93 @@ assistant.response$.subscribe(async data => {
 // > turns_lights_off (in under 900ms)
 // "Thank you, Rachel."
 // > "You are most welcome!" 🤯🤯🤯
+```
+### Example: Ensemble Performance
+In the following multi-vocaloid example, three different vocaloids perform a scene with their own unique accents.
+The output of each vocaloid is passed to the others, giving the models the ability to "play off" each other and create interesting, engaging and entertaining **live** performances.
+Other than creating the vocaloids, which should be done in sequence to prevent 429 errors, all inter-vocaloid communication can be handled in parallel, meaning that a program like this can scale to any number of players with no performance decrease.
+```javascript
+import { create_session } from "@tau-js/core";
+import { audio_promise } from "@tau-js/utility"
+
+let instructions = "You are a comedic vocalizer unit. Read your line exactly as provided."
+
+/**
+ * Note that while it is tempting to create all the session in parallel, this can result in a 429 too many requests, so it's more consistent to create them one at a time. 
+ */
+let players = {
+    brian : await create_session({voice : "ash",instructions}),
+    passerby : await create_session({voice : "verse",instructions}),
+    marketgoer : await create_session({voice : "ballad",instructions})
+}
+
+await players['brian'].system("Speak in in an hilarious, nervous sophisticated Liverpool accent.")
+await players['passerby'].system("Speak in an hilarious cockney London accent.")
+await players['marketgoer'].system("Whisper in an hilarous, maniacal Scottish brogue.")
+
+let dialog = [
+    [
+        "brian",
+        "Don't pass judgement on... other people or... **CLEARS THROAT** you may get judged yourself!",
+        "**NERVOUSLY, IMPROVISING, PONTIFICATING**",
+    ],
+    [
+        "passerby", 
+        "What?!",
+        "**DISBELIEVING**", 
+    ],
+    [
+        "brian",
+        "I said don't pass judgement on other people or *you* might get judged *too*.",
+        "**HOPEFULLY, CHEERFULLY**", 
+    ],
+    [
+        "passerby", 
+        "Who, me?",
+        "**HAPPILY**", 
+    ],
+    [
+        "brian",
+        "Yes!"
+    ],
+    [
+        "passerby", 
+        "Oh, thanks very much!",
+        "**GIDDILY**", 
+    ],
+    [
+        "brian", 
+        "**Well, not just you. *All* of you!**", 
+    ],
+    [
+        "marketgoer",
+        "... that's a nice gourd.",
+        "**CONSPIRATORILY, TIPSILY**"
+    ]
+]
+
+for (let [player_name, line, direction] of dialog) {
+    let player = players[player_name]
+    let input = `LINE: "${line}"`
+    if (direction) input = `Speak as follows: ${direction}. ${input}`
+    await player.user(input)
+    let response = await audio_promise(player)
+    let deltas = response.audio_deltas
+
+    /**
+     * Since calling `create_audio` doesn't make any HTTP requests, it won't 429 and it's possible to do any number in parallel.
+     * */
+    await Promise.all(
+        Object.keys(players)
+            .filter(key => key !== player_name)
+            .map(key => players[key])
+            .map(player => player.create_audio(deltas.join("")) //todo test
+    )
+}
+
+for (let player_name in players) {
+    players[player_name].close()
+}
 ```
 
 

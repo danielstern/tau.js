@@ -1,5 +1,5 @@
 /**
- * It's heckin cool.
+ * Library for working with realtime AI models.
  */
 declare module "tau"
 
@@ -7,59 +7,199 @@ declare module "tau"
  * Default 4o and 4o-mini voices.
  */
 type Voice = "alloy" | "ash" | "ballad" | "coral" | "echo" | "shimmer" | "sage" | "verse"
-type ToolChoice = "required" | "auto" | "none" | { type : "function", name : string }
+type ToolChoice = "required" | "auto" | "none" | { type: "function", name: string }
 type Instructions = string | ""
 type Temperature = number
 type Model = "4o" | "4o-mini"
-type Modalities =  ["text"] | ["text","audio"] 
+type Modalities = ["text"] | ["text", "audio"]
 type ApiKey = string
 type Name = string
+type Conversation = "auto" | "none"
 interface TurnDetection {
-    type : "server_vad",
+    /**
+     * The turn detection algorithm to use (only `server_vad`) is supported.
+     */
+    type: "server_vad",
+    /**
+     * How loud the volume of the input needs to be to activate the model. 
+     * 
+     * A higher number means that more volume is needed to activate the model. Defaults to 0.5.
+     */
     threshold: number,
-    prefix_padding_ms : number,
-    silence_duration_ms : number,
-    create_response : boolean
+    /**
+     * Works in conjunction with `threshold` to prevent the very beginning of user supplied audio from being cut off.
+     * 
+     * Extends the beginning of the block of speech to be processed backwards by the specified amount of time. Allows the model to pick up quiet sounds at the beginning of words without needing to lower teh threshold.
+     * 
+     * Example: The word *slight.* The *s* at the start of *slight* is quiet. Slight only gets loud in the middle so if the you couldn't extend the beginning of the window earlier the recording would only pick up "-light" or "-ight".
+     */
+    prefix_padding_ms: number,
+    /**
+     * After some voice input, the subsequent amount of silence required before the server starts to generate a response automatically.
+     * 
+     * A high value results in a longer delay before the model begins talking, increasing perceived latency, but the model will interrupt the user less frequently.
+     * 
+     * A low value results in less latency before the model begins responding, but the model may tend to "cut in", interrupting the user.
+     */
+    silence_duration_ms: number,
+    /**
+     * If this is enabled, the server will commit the audio buffer automatically and generate a response whenever it detects voice input.
+     * 
+     * If it's not enabled, the server will still automatically commit the buffer, but generating the response will need to be handled manually.
+     */
+    create_response: boolean
 
 }
 interface Tool {
     /**
      * Name of the function or other tool.
      */
-    name : string
+    name: string
     /**
      * Type of tool to use. Only `function` is direclty supported.
      * 
      */
-    type : "function" // | "file_search" | "code_interpreter",
-    description : string,
-    parameters : {
+    type: "function" // | "file_search" | "code_interpreter",
+    description: string,
+    parameters: {
         /**
          * The type of input accepted by the function.
          * 
          * Only `object` is currently supported.
          */
-        type : "object",
-        properties : {
-            [key : string] : {
-                type : "string" | "number" , // possibly others?
-                description : string,
-                examples : string[]
+        type: "object",
+        properties: {
+            [key: string]: {
+                type: "string" | "number", // possibly others?
+                description: string,
+                examples: string[]
             }
         },
         /**
          * Names of arguments which the model is always expected to include in calls to this function.
          */
-        required : string[]
+        required: string[]
     }
 }
 
+interface Response {
+    // TODO
+}
+
+export interface Session {
+    /**
+     * Creates a new conversation item with the role `user` using provided string as content. 
+     */
+    async user(message: string): Promise<ConversationItem>
+
+    /**
+    * Creates a new conversation item with the role `assistant` using provided string as content. 
+    */
+    async assistant(message: string): Promise<ConversationItem>
+
+    /**
+    * Creates a new conversation item with the role `system` using provided string as content. 
+    * 
+    * Equivalent to creating a developer or system message.
+    */
+    async system(message: string): Promise<ConversationItem>
+
+    /**
+     * Creates a new conversation item with the role `user` and the provided audio bytes as content.
+     */
+    async create_audio(bytes : string): Promise<ConversationItem>
+
+    /**
+    * Appends the audio bytes to the audio input buffer.
+    * 
+    * This is different from `create_audio` as it does not create a conversation item. Instead, a conversation item will be created when the buffer is commited. If turn detection is enabled, the buffer will be committed automatically.
+    */
+    async append_input_audio_buffer(bytes : string): Promise<void>
+
+    
+    /**
+    * Commits all the audio in the audio input buffer, creating a conversation item.
+    * 
+    * If turn detection is enabled, the buffer will be committed automatically.
+    */
+    async commit_input_audio_buffer(): Promise<void>
+
+    /**
+    * Cancels an in-progress response.
+    */
+    async cancel_response(): Promise<void>
+
+    /**
+     * Deletes a conversation item from the default conversation.
+     * 
+     * `item_id` can be retrieved from the `ConversationItem` object returned by the `user`, `assistant`, `system` and `create_audio` methods.
+     */
+    async delete_conversation_item(item_id): Promise<void>
+
+
+    /**
+    * The model generates a new assistant message (response) and adds it to the conversation.
+    * 
+    * The default conversation can only have one response being generated at a time, but multiple can be generated at once if the conversation is set to "none".
+    * 
+    */
+    async response({
+        // TODO, response arguments
+        conversation : Conversation
+
+    }): Promise<Response>
+
+
+    /**
+    * Ends the session and closes all associated websockets.
+    */
+    close(): void
+
+    /**
+     * Returns the name of the session (for debugging purposes.)
+     */
+    name: string
+
+    /**
+     * Details of the current session.
+     */
+    session : SessionDetails
+
+    /**
+     * Accumulated token usage and cost for the session. 
+     */
+    usage : UsageData
+
+    /**
+     * The websocket object currently connected to the model.
+     * 
+     * Use for very low-level debugging, making plugins, implementing features, etc. 
+     */
+    ws : WebSocket
+
+    /**
+     * An observable which sends along any data sent from the remote server.
+     * 
+     * Used for debugging, creating plugins, etc.
+     * 
+     * Usage: `event$.subscribe(handler)`
+     */
+    event$ : Observable<any>
+    
+    /**
+     * An observable which fires whenever the server generates a response. The data is pre-processed and contains usage information.
+     * 
+     * Useful for when turn detection is enabled and you're not calling `response` directly.
+     * 
+     * Usage: `response$.subscribe(handler)`
+     */
+    response$ : Observable<Response>
+}
+
 /**
+ * Creates a new real-time model session. This opens a persistent websocket connection to the model endpoint, returning an object which can be used to interact with the session.
  * 
- */
-export type Session = {}
-/**
- * Create a new real-time model session.
+ * This is equivalent to opening a new websocket connection then calling `session.update` with the same options.
  */
 export declare async function create_session(session_options: {
     /**
@@ -100,7 +240,7 @@ export declare async function create_session(session_options: {
      * 
      * *This should be considered guidance for the model rather than hard rules as the model will sometimes ignore the tool_choice parameter.*
      */
-    tool_choice? : ToolChoice
+    tool_choice?: ToolChoice
 
     /**
      * Specify an array of tools which are available to your model, typically functions that you define. 
@@ -108,12 +248,16 @@ export declare async function create_session(session_options: {
      * Functions are the only category of tool explicitly supported by this API. 
      * 
      */
-    tools? : Tool[]
+    tools?: Tool[]
 
     /**
+     * Enables turn detection.
      * 
+     * Turn detection allows to server to generate and cancel responses automatically when reacting to user voice input.
+     * 
+     * When enabled, the server will continually monitor the voice input buffer. After the user speaks and after a specified silence duration, the model will automatically commit the buffer and generate a response.
      */
-    turn_detection? : TurnDetection
+    turn_detection?: TurnDetection
 
     /**
      * Specify whether to return text and audio, or just text.
@@ -121,7 +265,7 @@ export declare async function create_session(session_options: {
      * Accepted values are `["text"]` or `["text","audio"]`.
      * Returning only audio is not supported.
      */
-    modalities? : Modalities
+    modalities?: Modalities
 },
     tau_options: {
         /**
@@ -130,7 +274,7 @@ export declare async function create_session(session_options: {
          * If none is provided, the OPENAI_API_KEY environment variable will be used instead.
          */
         api_key?: ApiKey
-        
+
         /**
          * Specify the model to use for the session.
          * 
@@ -149,16 +293,6 @@ export declare async function create_session(session_options: {
          * - Install the debug server with `npm install -g @tau-js/cli
          * - Run the debug server with `tau debug start`
          */
-        debug? : boolean
-        /**
-         * The debug server will not automatically generate a response whenever user voice input is received.
-            // TODO... VAD mode??
-         */
-        autorespond? : boolean
+        debug?: boolean
     })
-    : Promise<{
-        /**
-         * Ends the session and closes all associated websockets.
-         */
-        close(): void
-    }>;
+    : Promise<Session>;

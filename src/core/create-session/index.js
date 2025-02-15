@@ -22,7 +22,7 @@ import {
 let session_count = 0
 
 export async function create_session({
-    modalities = ["text"],
+    modalities = ["text", "audio"],
     instructions = undefined,
     temperature = undefined,
     max_response_output_tokens = undefined,
@@ -119,6 +119,7 @@ export async function create_session({
 
     async function create({ message, role }) {
         if (_closed) throw new Error("Closed.")
+        if (!message) throw new Error("Content is required when creating a conversation item.")
         let type = role === "user" || role === "system" ? "input_text" : "text"
         let id = `tau-message-${++message_count}-${Date.now()}`
         send_ws(ws, {
@@ -143,7 +144,7 @@ export async function create_session({
         return data.item
     }
 
-    async function create_audio({ bytes }) {
+    async function create_audio(bytes) {
         if (!bytes) return console.warn("No audio input detected")
         let type = "input_audio"
         let id = `tau-audio-${++message_count}-${Date.now()}`
@@ -171,7 +172,7 @@ export async function create_session({
         return data.item
     }
 
-    async function append_input_audio_buffer({ bytes }) {
+    async function append_input_audio_buffer(bytes) {
         if (!bytes) return console.warn("No audio input detected")
         send_ws(ws, {
             type: "input_audio_buffer.append",
@@ -210,12 +211,32 @@ export async function create_session({
         await message_promise(ws, data => data.type === "conversation.item.deleted")
     }
 
-    async function response(response_arguments = {}, {
+    async function response({
+        instructions = undefined,
+        tools = undefined,
+        tool_choice = undefined,
+        temperature = undefined,
+        max_response_output_tokens = undefined,
+        conversation = undefined,
+        metadata = undefined,
+        input = undefined,
+    } = {}, {
         prev_compute_time = 0,
         tries = 1,
         max_time_to_respond = 60000,
         max_tries = 3
     } = {}) {
+        let response_arguments = {
+            instructions,
+            tools,
+            tool_choice,
+            temperature,
+            max_response_output_tokens,
+            conversation,
+            metadata,
+            input
+
+        }
         if (_closed) throw new Error("Closed.")
 
         if (tries > max_tries) {
@@ -318,8 +339,6 @@ export async function create_session({
             get audio_deltas() { return deltas },
             total_audio_duration: total_duration
         }
-
-        // response$.next(out_data)
         return out_data
     }
 
@@ -339,6 +358,7 @@ export async function create_session({
         event$,
         response$,
         get name() { return name },
+        get ws() { return ws },
         get session() { return _session },
         get usage() { return _accumulated_usage },
     }

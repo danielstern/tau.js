@@ -75,15 +75,11 @@ export async function init_debug({
     session,
     create_audio,
     create_audio_stream,
-    response,
     debug_voice_in
-    // autorespond
 }) {
-    // let debug = true    
     let debug_server_url = process.env.TAU_DEBUG_SERVER_URL ?? `ws://localhost:30020`
     let debug_ws = new WebSocket(`${debug_server_url}/provider`)
     debug_ws.on("error", () => {
-        // throw new Error(docs.no_debug_server)
         throw new Error(
             `Tried to connect to the debug server, but none was found at the specified URL.
 - If you don't want to run the debug server, make sure that \`debug\` is false when creating a new session
@@ -92,22 +88,17 @@ use \`tau debug start\`:
 npm install -g tau
 tau debug start`
         )
-        // debug = false
-        // return
     })
-    // if (autorespond) {
-        debug_ws.on("message", async (message) => {
-            if (!debug_voice_in) return
-            let data = parse_message(message)
-            if (data.type === "user.audio.input") {
-                await create_audio({ bytes: data.bytes })
-                // await response()
-            }
-            if (data.type === "user.audio.stream") {
-                await create_audio_stream({bytes : data.bytes})
-            }
-        })
-    // }
+    debug_ws.on("message", async (message) => {
+        if (!debug_voice_in) return
+        let data = parse_message(message)
+        if (data.type === "user.audio.input") {
+            await create_audio(data.bytes)
+        }
+        if (data.type === "user.audio.stream") {
+            await create_audio_stream(data.bytes)
+        }
+    })
     await message_promise(debug_ws, data => data.type === "connection.complete")
     console.info("Connected to Debug Server.")
     event$.subscribe(data => {
