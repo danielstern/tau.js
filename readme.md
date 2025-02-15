@@ -384,6 +384,167 @@ for (let player_name in players) {
 
 
 # API Reference
+# `create_session`
+
+Creates a new real-time model session by opening a persistent websocket connection to the model endpoint. This function is equivalent to opening a websocket connection and then calling `session.update` with the same options.
+
+## Signature
+
+```typescript
+async function create_session(
+  session_options: { ... },
+  tau_options: { ... }
+): Promise<Session>
+```
+
+## Parameters
+
+### `session_options`
+
+- **`voice?`** (`Voice`):  
+  Voice identifier for audio output. Leave undefined to use the default.  
+  *Note: Cannot be changed after session initialization.*
+
+- **`instructions?`** (`Instructions`):  
+  Default instructions for the model (works like system prompts).  
+  Use an empty string for no instructions or undefined for default instructions.
+
+- **`temperature?`** (`Temperature`):  
+  A number between 0.6 and 1.2. Higher values yield more random outputs; lower values yield more deterministic responses and may improve performance.
+
+- **`tool_choice?`** (`ToolChoice`):  
+  Guidance on whether the model should use a tool when generating a response.  
+  - `"auto"` (default): Model chooses.  
+  - `"required"`: Model should use a tool.  
+  - `"none"`: Model should not use a tool.  
+  - `{ type: "function", name: string }`: Specifies a particular function tool.
+
+- **`tools?`** (`Tool[]`):  
+  An array of available tools (functions) for the model.
+
+- **`turn_detection?`** (`TurnDetection`):  
+  Enables automatic handling of voice input via turn detection. When enabled, the server monitors the audio buffer and commits it after a defined period of silence.
+
+- **`modalities?`** (`Modalities`):  
+  Determines the output format. Acceptable values: `["text"]` or `["text", "audio"]`.  
+  *Note: Only text or text with audio is supported.*
+
+### `tau_options`
+
+- **`api_key?`** (`ApiKey`):  
+  API key for the session. If undefined, the `OPENAI_API_KEY` environment variable is used.
+
+- **`model?`** (`Model`):  
+  The model to use. Supported models:  
+  - **4o (default):** Reliable with nuanced output (200 million parameters).  
+  - **4o-mini:** Less reliable but cost-effective (20 million parameters).
+
+- **`name?`** (`Name`):  
+  Optional session identifier for debugging purposes.
+
+- **`debug?`** (`boolean`):  
+  If `true`, connects the session to the debug server for real-time monitoring of voice output.  
+  *Usage:*  
+  - Install: `npm install -g @tau-js/cli`  
+  - Run: `tau debug start`
+
+## Returns
+
+A `Promise` that resolves to a `Session` object, which provides methods to interact with the conversation, manage audio input, generate responses, and handle debugging events.
+
+# Session Interface
+
+The `Session` interface provides methods and properties for interacting with a real-time AI model session. Use it to manage conversation items, handle audio input, generate responses, and access debugging tools.
+
+## Methods
+
+### `user(message: string): Promise<ConversationItem>`
+Creates a new conversation item with the role `user` using the provided text.
+
+### `assistant(message: string): Promise<ConversationItem>`
+Creates a new conversation item with the role `assistant` using the provided text.
+
+### `system(message: string): Promise<ConversationItem>`
+Creates a new conversation item with the role `system` (developer/system message) using the provided text.
+
+### `create_audio(bytes: string): Promise<ConversationItem>`
+Creates a new conversation item with the role `user` using the provided audio bytes as content.
+
+### `append_input_audio_buffer(bytes: string): Promise<void>`
+Appends audio bytes to the input buffer. Unlike `create_audio`, this does not immediately create a conversation item; the buffer is committed later, either manually or automatically via turn detection.
+
+### `commit_input_audio_buffer(): Promise<void>`
+Commits the audio in the input buffer, creating a conversation item. When turn detection is enabled, this is handled automatically.
+
+### `cancel_response(): Promise<void>`
+Cancels an in-progress response generation.
+
+### `delete_conversation_item(item_id): Promise<void>`
+Deletes a conversation item from the default conversation. The `item_id` is obtained from a previously created conversation item.
+
+### `response(response_options?: ResponseOptions): Promise<Response>`
+Generates a new assistant message and adds it to the conversation.  
+*Note:* The default conversation supports only one active response at a time, unless set to "none".
+
+### `close(): void`
+Ends the session and closes all associated websocket connections.
+
+## Properties
+
+- **`name: string`**  
+  The session's name (useful for debugging).
+
+- **`session: SessionDetails`**  
+  Detailed information about the current session.
+
+- **`usage: UsageData`**  
+  Accumulated token usage and cost for the session.
+
+- **`ws: WebSocket`**  
+  The active websocket connection for low-level debugging and custom implementations.
+
+- **`event$: Observable<any>`**  
+  An observable that emits data received from the remote server.  
+  *Usage:* `event$.subscribe(handler)`
+
+- **`response$: Observable<Response>`**  
+  An observable that fires whenever the server generates a response. The data includes pre-processed usage information.  
+  *Usage:* `response$.subscribe(handler)`
+
+
+# ResponseOptions Interface
+
+Defines options to customize the generation of a model response.
+
+## Properties
+
+- **`conversation?`** (`Conversation`):  
+  Specifies which conversation to add the response to.  
+  - `"auto"`: Adds the response to the default conversation, influencing future outputs.  
+  - `"none"`: The response is not added to any conversation; it is transient and does not affect future outputs.
+
+- **`tools?`** (`Tool[]`):  
+  An array of tools (e.g., functions) available for use during response generation.  
+  *Note:* Does not override previously supplied tools; it makes the model more inclined to use the specified ones.
+
+- **`tool_choice?`** (`ToolChoice`):  
+  Guidance on which tool to use when generating the response.  
+  Options include: `"auto"`, `"required"`, `"none"`, or a specific function tool defined as `{ type: "function", name: string }`.
+
+- **`temperature?`** (`Temperature`):  
+  A numeric value between 0.6 and 1.2. Higher values yield more random output.
+
+- **`instructions?`** (`Instructions`):  
+  Provides guidance on how to generate the response, functioning similarly to a system message.  
+  If omitted, the session’s default instructions or the model's built-in defaults are used.
+
+- **`input?`** (`ConversationItem[]`):  
+  An array of conversation items to use as context for the response.  
+  Specifying this ignores the default conversation history.
+
+- **`metadata?`** (`Metadata`):  
+  Custom metadata attached to the response request.
+
 ## Environment Variables
 ```sh
 # If provided, will be used as the API key for all sessions.
@@ -391,14 +552,6 @@ OPENAI_API_KEY=sk-1234567890abcdefg
 # If enabled, sessions will automatically connect to debug server. 
 TAU_DEBUG=true
 ```
-## Session Reference 
-### `async tau.create_session(options, config)`
-
-## Utility Reference
-### `async tau.utility.audio_promise(session)`
-
-## Debug Reference
-### async TODO
 
 ## FAQ
 ### What ML models does `tau.js` support?
@@ -412,3 +565,9 @@ Lead Developer / Lead Maintainer / Code Whisperer - Daniel J. Stern (daniel@hera
 
 ### Will `tau.js` support non-realtime models like `o1` or `4o`?
 No, `tau.js` is focused entirely on supporting realtime, websocket based. It will add support for additional realtime models as they come along.
+
+### Will `tau.js` support realtime models other than `OpenAI` models?
+Yes, `tau.js` will support competing realtime models as they come along. Please direct suggestions to the `issues` page.
+
+### Is `tau.js` actively maintained?
+Yes. `tau.js` is maintained actively and will continue to update to support additional models and features of those models.
