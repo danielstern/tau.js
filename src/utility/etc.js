@@ -32,7 +32,7 @@ export function load_yml(filename = "", override_dir = null) {
 
         return parsedYml;
     } catch (error) {
-        console.error(`Failed to load YAML file ${filename}:`, error.message);
+        console.error(`τ Failed to load YAML file ${filename}:`, error.message);
         throw error;
     }
 }
@@ -115,6 +115,6 @@ export async function save_deltas_as_wav(deltas, filename = `tmp/voice-${Date.no
         )
     } catch (e) {
         console.error(e)
-        throw new Error("Encountered an error saving an audio file. Are you sure the folder to which you are trying to save the audio exists?")
+        throw new Error("τ Encountered an error saving an audio file. Are you sure the folder to which you are trying to save the audio exists?")
     }
 }

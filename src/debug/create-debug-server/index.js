@@ -18,7 +18,7 @@ export async function create_debug_server() {
     let consumer_count = 0
 
     wss.on('connection', async (ws, request) => {
-        console.log("A new client connected", request.url, true)
+        console.log("τ Debug Server: A new client connected", request.url, true)
         let { url } = request
         if (url === "/provider") {
 
@@ -34,7 +34,7 @@ export async function create_debug_server() {
                 }
             })
             ws.on('close', () => {
-                console.log("A client disconnected");
+                console.log("τ Debug Server: A client disconnected");
             });
         } else if (url === "/consumer") {
             ws.send(JSON.stringify({ type: "connection.complete" }))
@@ -56,7 +56,7 @@ export async function create_debug_server() {
     })
 
     const server = app.listen(port, () => {
-        console.log(`Server running on port ${port}`);
+        console.log(`τ Debug Server running on port ${port}`);
     });
 
     server.on('upgrade', (request, socket, head) => {

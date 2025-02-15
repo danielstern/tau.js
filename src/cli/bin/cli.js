@@ -13,6 +13,6 @@ if (args[0] === "debug" && args[1] === "start") {
         "Opened debugger at https://owned.io/tau/debugger/.\n*Click anywhere in the debugger ui to enable the audio context before generating audio.*"
     )
 } else {
-    console.log("Usage: tau debug start");
+    console.info("Usage: tau debug start");
     process.exit(1);
 }

@@ -137,6 +137,8 @@ await session.response()
 ### Example: Creating a Dramatic Vocaloid
 Realtime voice models (vocaloids) can produce surprisingly powerful and emotionally compelling audio. 
 
+This example also showcases using a utility to save the audio is `wav` for later use.
+
 ```javascript
 import { create_session } from "@tau-js/core"
 import { audio_promise, save_deltas_as_wav } from "@tau-js/utility"
@@ -277,9 +279,7 @@ let assistant_vocaloid = await create_session({
 await assistant_vocaloid.system("Speak in a friedly, confident, refined british accent.")
 
 assistant.response$.subscribe(async data => {
-    console.info()
     let name = data.function_call.name
-    console.info(`Calling function`, name)
 
     if (name === "you_are_welcome") {
         await assistant_vocaloid.system("Please say, 'You're most welcome!'")
@@ -373,7 +373,7 @@ for (let [player_name, line, direction] of dialog) {
         Object.keys(players)
             .filter(key => key !== player_name)
             .map(key => players[key])
-            .map(player => player.create_audio(deltas.join("")) //todo test
+            .map(player => player.create_audio(deltas.join("")))
     )
 }
 
@@ -404,6 +404,16 @@ async function create_session(
 - **`voice?`** (`Voice`):  
   Voice identifier for audio output. Leave undefined to use the default.  
   *Note: Cannot be changed after session initialization.*
+    
+    Available Voices:
+    - **alloy**
+    - **ash**
+    - **ballad**
+    - **coral**
+    - **echo**
+    - **shimmer**
+    - **sage**
+    - **verse**
 
 - **`instructions?`** (`Instructions`):  
   Default instructions for the model (works like system prompts).  
@@ -545,12 +555,45 @@ Defines options to customize the generation of a model response.
 - **`metadata?`** (`Metadata`):  
   Custom metadata attached to the response request.
 
+ # Tool Interface
+
+Defines a tool available for the model, typically representing a callable function.
+
+## Properties
+
+- **`name: string`**  
+  The name of the function or tool.
+
+- **`type: "function"`**  
+  Specifies the tool type. Currently, only `"function"` is supported.
+
+- **`description: string`**  
+  A description of what the tool does.
+
+- **`parameters`** (`object`):  
+  Describes the input accepted by the tool.
+  
+  - **`type: "object"`**  
+    Indicates that the tool accepts an object as input.
+  
+  - **`properties: { [key: string]: { type: "string" | "number", description: string, examples: string[] } }`**  
+    An object mapping parameter names to their definitions, where each parameter includes:
+    - **`type`**: The expected data type (e.g., `"string"` or `"number"`).
+    - **`description`**: A description of the parameter.
+    - **`examples`**: Example values for the parameter.
+  
+  - **`required: string[]`**  
+    An array of parameter names that must be included in every call to this tool. 
+
+
 ## Environment Variables
 ```sh
 # If provided, will be used as the API key for all sessions.
 OPENAI_API_KEY=sk-1234567890abcdefg
 # If enabled, sessions will automatically connect to debug server. 
 TAU_DEBUG=true
+# If 0, no non-error logs will be output to console. If 1 some logs will be published. If 2 or more, full logs will be published.
+TAU_LOGGING=2
 ```
 
 ## FAQ
@@ -564,7 +607,7 @@ If you have an idea, suggestion, bug fix request or question, create an issue or
 Lead Developer / Lead Maintainer / Code Whisperer - Daniel J. Stern (daniel@herald.to)
 
 ### Will `tau.js` support non-realtime models like `o1` or `4o`?
-No, `tau.js` is focused entirely on supporting realtime, websocket based. It will add support for additional realtime models as they come along.
+No, `tau.js` is focused entirely on supporting realtime, websocket based models. 
 
 ### Will `tau.js` support realtime models other than `OpenAI` models?
 Yes, `tau.js` will support competing realtime models as they come along. Please direct suggestions to the `issues` page.

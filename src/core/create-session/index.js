@@ -114,7 +114,7 @@ export async function create_session({
         send_ws(ws, { type: "session.update", session: updates });
         let { session } = await message_promise(ws, data => data.type === "session.updated")
         _session = session
-        if (process.env.TAU_LOGGING > 0) console.info("Updated session", _session)
+        if (process.env.TAU_LOGGING > 0) console.info("τ Updated session", _session)
     }
 
     async function create({ message, role }) {
@@ -145,7 +145,7 @@ export async function create_session({
     }
 
     async function create_audio(bytes) {
-        if (!bytes) return console.warn("No audio input detected")
+        if (!bytes) return console.warn("τ No audio input detected.")
         let type = "input_audio"
         let id = `tau-audio-${++message_count}-${Date.now()}`
 
@@ -173,7 +173,7 @@ export async function create_session({
     }
 
     async function append_input_audio_buffer(bytes) {
-        if (!bytes) return console.warn("No audio input detected")
+        if (!bytes) return console.warn("τ No audio input detected.")
         send_ws(ws, {
             type: "input_audio_buffer.append",
             audio: bytes
@@ -226,6 +226,7 @@ export async function create_session({
         max_time_to_respond = 60000,
         max_tries = 3
     } = {}) {
+
         let response_arguments = {
             instructions,
             tools,
@@ -240,7 +241,7 @@ export async function create_session({
         if (_closed) throw new Error("Closed.")
 
         if (tries > max_tries) {
-            console.warn(`Failed to get a response after ${tries} tries. Auto-cancelling response.`)
+            console.warn(`τ Failed to get a response after ${tries} tries.`)
             return null
         }
 
@@ -249,7 +250,7 @@ export async function create_session({
         let start_time = Date.now()
         let response_has_completed = false
 
-        if (process.env.TAU_LOGGING > 0) console.info("Response arguments", response_arguments)
+        if (process.env.TAU_LOGGING > 1) console.info("τ Response arguments", response_arguments)
         send_ws(ws, {
             type: "response.create",
             response: response_arguments
@@ -302,7 +303,7 @@ export async function create_session({
         response_has_completed = true
 
         if (data.error) {
-            console.error("The request timed out.")
+            console.error("τ A response request timed out.")
             return null
         }
 
@@ -314,10 +315,8 @@ export async function create_session({
         let total_compute_time = compute_time + prev_compute_time
 
         if (data.response.status === "failed") {
-            console.info(data.response)
-            console.warn(
-                "response.create request failed after", compute_time, "ms", "Attempting to retry..."
-            )
+            if (process.env.TAU_LOGGING > 0) console.info(data.response)
+            console.warn("τ response.create request failed after", compute_time, "ms")
             return await response(response_arguments, {
                 tries: tries + 1,
                 prev_compute_time: total_compute_time,

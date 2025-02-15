@@ -29,32 +29,36 @@ export function message_promise(ws, condition = () => true) {
 export function convert_response_to_fn(response) {
 
     let all_output = response.output
-    if (!all_output) {
-        throw new Error("A response was returned with no output value.")
-    }
-
     let function_call = null
     let transcript = null
-    for (let output of all_output) {
+    if (!all_output) {
+        console.warn("τ A response was returned with no output value.")
+    } else {
 
-        if (output.type === "message") {
-            let content = output.content[0]
-            if (!content) {
-                console.error(JSON.stringify(response, null, 2))
+        for (let output of all_output) {
+
+            if (output.type === "message") {
+                let content = output.content[0]
+                if (!content) {
+                    if (process.env.TAU_LOGGING > 0) console.warn("τ A response was returned with no content.")
+                    console.warn(JSON.stringify(response, null, 2))
+                } else {
+                    let message = content.text || content.transcript
+                    transcript = message
+                }
             }
-            let message = content.text || content.transcript
-            transcript = message
-        }
-        if (output.type === "function_call") {
-            let name = output.name
-            let parameters = null
-            try {
-                parameters = JSON.parse(output.arguments)
-            } catch (e) {
-                console.error("Encountered an error parsing function arguments for function", name, output.arguments)
+            if (output.type === "function_call") {
+                let name = output.name
+                let parameters = null
+                try {
+                    parameters = JSON.parse(output.arguments)
+                } catch (e) {
+                    console.error("τ Encountered an error parsing function arguments for function", name, output.arguments)
+                }
+                function_call = { name, parameters }
             }
-            function_call = { name, parameters }
         }
+
     }
 
     return {
@@ -100,7 +104,7 @@ tau debug start`
         }
     })
     await message_promise(debug_ws, data => data.type === "connection.complete")
-    console.info("Connected to Debug Server.")
+    if (process.env.TAU_LOGGING > 0) console.info("τ Connected to Debug Server.")
     event$.subscribe(data => {
         send_ws(debug_ws, { session_id: name, ...data, session })
     })

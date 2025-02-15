@@ -20,7 +20,7 @@ Specify the \`api_key\` argument when creating a new session or set the OPENAI_A
     }
 
     function error_handler(_error) {
-        console.error(`τ Webscoket Error`, _error)
+        console.error(`τ A Websocket error`, _error)
         throw new Error(`τ ${name} encountered an error.`)
     }
 
