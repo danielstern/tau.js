@@ -1,16 +1,26 @@
+<div>
 <picture>
 <img style="margin-bottom:12px" src="https://storage.googleapis.com/owned-io-public-files/images/tau-logo.png">
 </picture>
-<!-- <div style="display:flex; gap: 16px"> -->
+</div>
+<div style="display:flex; gap: 16px">
 <!-- <a href="https://github.com/danielstern/tau.js/blob/master/LICENSE" target="_blank">
 </a> -->
 <picture>
 <img src="https://img.shields.io/badge/License-MIT-steelblue">
-<img src="https://img.shields.io/badge/version-alpha-orange">
-<img src="https://img.shields.io/badge/node-18.20.4-darkgreen">
-<img src="https://img.shields.io/badge/npm-tau--js-purple">
 </picture>
-<!-- </div> -->
+<picture>
+<img src="https://img.shields.io/badge/version-alpha-orange">
+
+</picture>
+<picture>
+<img src="https://img.shields.io/badge/node-18.20.4-darkgreen">
+</picture>
+<a href="https://www.npmjs.com/org/tau-js">
+<img src="https://img.shields.io/badge/npm-@tau--js-purple">
+</a>
+
+</div>
 <div style="margin-bottom:20px"></div>
 
 # tau.js <img width=20px src="https://favicon-generator-1041699091324.us-central1.run.app/icon"> 
