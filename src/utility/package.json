@@ -1,6 +1,6 @@
 {
     "name": "@tau-js/utility",
-    "version": "1.0.1-beta",
+    "version": "1.0.2-beta",
     "main": "etc.js",
     "type": "module",
     "author" : "daniel j. stern (code whisperer)",
@@ -10,5 +10,14 @@
     "dependencies": {
         "delay": "^6.0.0",
         "js-yaml": "^4.1.0"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/danielstern/tau.js.git",
+        "directory": "packages/core"
+    },
+    "homepage": "https://github.com/danielstern/tau.js#readme",
+    "bugs": {
+        "url": "https://github.com/danielstern/tau.js/issues"
     }
 }

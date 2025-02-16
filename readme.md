@@ -300,7 +300,7 @@ The output of each vocaloid is passed to the others, giving the models the abili
 Other than creating the vocaloids, which should be done in sequence to prevent 429 errors, all inter-vocaloid communication can be handled in parallel, meaning that a program like this can scale to any number of players with no performance decrease.
 ```javascript
 import { create_session } from "@tau-js/core";
-import { audio_promise } from "@tau-js/utility"
+import { audio_finished } from "@tau-js/utility"
 
 let instructions = "You are a comedic vocalizer unit. Read your line exactly as provided."
 
@@ -363,18 +363,25 @@ for (let [player_name, line, direction] of dialog) {
     let input = `LINE: "${line}"`
     if (direction) input = `Speak as follows: ${direction}. ${input}`
     await player.user(input)
-    let response = await audio_promise(player)
+    let response = await player.response()
     let deltas = response.audio_deltas
-
+    
     /**
+     * The audio deltas are ready long before the audio itself has finished playing, so it's possible for the other players to begin processing before the previous line has finished.
      * Since calling `create_audio` doesn't make any HTTP requests, it won't 429 and it's possible to do any number in parallel.
      * */
-    await Promise.all(
-        Object.keys(players)
+    await Promise.all([
+        ... Object.keys(players)
             .filter(key => key !== player_name)
             .map(key => players[key])
-            .map(player => player.create_audio(deltas.join("")))
-    )
+            .map(player => player.create_audio(deltas.join(""))),
+        /**
+         * The `audio_finished` utility returns a promise that resolves 
+         * around when the audio associated with a given response would 
+         * stop playing, if it started playing as early as possible.
+         */
+        audio_finished(response)
+    ])
 }
 
 for (let player_name in players) {

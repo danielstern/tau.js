@@ -56,19 +56,23 @@ export async function user_tty() {
 
 export async function audio_promise(session) {
     let data = await session.response()
-    let {
+    return await audio_finished(data, 0)
+}
+
+export async function audio_finished(data, shift_time = 0) {
+    let { first_audio_delta_timestamp, total_audio_duration } = data
+    if (!first_audio_delta_timestamp) return
+    let target = total_audio_duration + first_audio_delta_timestamp + shift_time
+    console.info({
+        first_audio_delta_timestamp,
         total_audio_duration,
-        first_audio_delta_compute_time,
-        compute_time
-    } = data
-
-    await delay(
-        total_audio_duration * 1000 +
-        first_audio_delta_compute_time -
-        compute_time
-    )
-
-    return data
+        shift_time, 
+        target
+    })
+    while (true) {
+        await delay(10)
+        if (Date.now() >= target) return true
+    }
 }
 
 function convert_pcm_to_wav(

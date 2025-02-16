@@ -270,10 +270,12 @@ export async function create_session({
 
         let first_audio_delta_compute_time = null
         let first_text_delta_compute_time = null
+        let first_audio_delta_timestamp = null
 
         async function co_first_delta_process() {
             let data = await message_promise(ws, data => data.type === "response.audio.delta" || data.type === "response.done" || data.type === "response.text.delta")
             if (data.type === "response.audio.delta") {
+                first_audio_delta_timestamp = Date.now()
                 first_audio_delta_compute_time = Date.now() - start_time + prev_compute_time
             }
             if (data.type === "response.text.delta") {
@@ -286,7 +288,8 @@ export async function create_session({
             let off = message_handler(ws, data => data.type === "response.audio.delta", (data) => {
                 deltas.push(data.delta)
                 let l = data.delta.length
-                total_duration += l / 64000
+                total_duration += l / 64
+                // total_duration += l / 64000
 
             })
             await message_promise(ws, data => data.type === "response.done")
@@ -334,6 +337,7 @@ export async function create_session({
             compute_time: total_compute_time,
             first_text_delta_compute_time,
             first_audio_delta_compute_time,
+            first_audio_delta_timestamp,
             attempts: tries,
             get audio_deltas() { return deltas },
             total_audio_duration: total_duration
