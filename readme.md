@@ -79,12 +79,13 @@ One of the most difficult parts of getting started with realtime audio is handli
 ## Quick Start Guide
 Developing with Realtime AI Models is simple and easy with `tau.js`. You can be conversing with your model in short order by following these steps:
 1. Install `tau.js`
-```
-npm install -g @tau-js/core @tau-js/cli
+```sh
+npm install --save @tau-js/core
 ```
 
 2. Start the `debug` server
 ```
+npm install -g @tau-js/cli
 tau debug start
 ```
 
@@ -99,7 +100,8 @@ let session = await create_session({
     voice: "verse"
 }, {
     model : "4o",
-    debug: true
+    debug: true,
+    api_key : "sk-1234-abcd"
 })
 
 await session.system("Speak in a tough, brassy, raspy, confident, assured, deep Scottish brogue.")
@@ -107,6 +109,11 @@ await session.user("Why did Napoleon lose the battle of Waterloo?")
 await session.response({
     conversation : "none",
 })
+```
+
+```sh
+# If provided, the OPENAI_API_KEY environment variable will be used as the API key for all sessions.
+OPENAI_API_KEY=sk-1234567890abcdefg
 ```
 
 ## Understanding and Using the Debug Server + UI
@@ -128,10 +135,12 @@ The debug UI is still in development. You'll be able to run the debug UI locally
 
 Enable debug output from a tau session by passing `{ debug : true }` (see examples) or by setting the following environment variable:
 
-```
+```sh
 # If enabled, sessions will automatically connect to debug server
 TAU_DEBUG=true
 ```
+
+
 
 ## Examples
 ### Example: Creating a Simple Realtime Translator
