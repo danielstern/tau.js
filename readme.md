@@ -1,13 +1,16 @@
+<picture>
 <img style="margin-bottom:12px" src="https://storage.googleapis.com/owned-io-public-files/images/tau-logo.png">
-
-<div style="display:flex; gap: 16px">
-<a href="https://github.com/danielstern/tau.js/blob/master/LICENSE" target="_blank">
+</picture>
+<!-- <div style="display:flex; gap: 16px"> -->
+<!-- <a href="https://github.com/danielstern/tau.js/blob/master/LICENSE" target="_blank">
+</a> -->
+<picture>
 <img src="https://img.shields.io/badge/License-MIT-steelblue">
-</a>
 <img src="https://img.shields.io/badge/version-alpha-orange">
 <img src="https://img.shields.io/badge/node-18.20.4-darkgreen">
 <img src="https://img.shields.io/badge/npm-tau--js-purple">
-</div>
+</picture>
+<!-- </div> -->
 <div style="margin-bottom:20px"></div>
 
 # tau.js <img width=20px src="https://favicon-generator-1041699091324.us-central1.run.app/icon"> 
