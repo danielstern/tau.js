@@ -1,14 +1,11 @@
 {
     "name": "tau.js",
-    "version": "1.0.1-alpha",
-    "description": "realtime model session manager for working with fast, websocket ai connections.",
+    "version": "1.0.2-alpha",
+    "description": "Realtime model session manager for working with fast, websocket connections.",
     "type": "module",
     "workspaces": [
         "src/*"
     ],
-    "bin": {
-        "tau": "./bin/cli.js"
-    },
     "keywords": [
         "ai",
         "realtime",

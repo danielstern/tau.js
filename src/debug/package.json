@@ -1,16 +1,28 @@
 {
     "name": "@tau-js/debug",
-    "version": "1.0.0-alpha",
+    "version": "1.0.2-alpha",
     "main": "index.js",
     "type": "module",
     "author" : "daniel j. stern (code whisperer)",
     "exports": {
         ".": "./index.js"
     },
-    "devDependencies": {
+    "dependencies": {
         "cors": "^2.8.5",
         "express": "^4.21.2",
         "open": "^10.1.0",
         "ws": "^8.18.0"
+    },
+    "publishConfig": {
+        "access": "public"
+    },
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/danielstern/tau.js.git",
+        "directory": "packages/debug"
+    },
+    "homepage": "https://github.com/danielstern/tau.js#readme",
+    "bugs": {
+        "url": "https://github.com/danielstern/tau.js/issues"
     }
 }
