@@ -1,6 +1,6 @@
 {
     "name": "tau.js",
-    "version": "1.0.2-alpha",
+    "version": "1.0.3-alpha",
     "description": "Realtime model session manager for working with fast, websocket connections.",
     "type": "module",
     "workspaces": [
