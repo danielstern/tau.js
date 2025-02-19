@@ -1,5 +1,6 @@
 
 import WebSocket from "ws";
+import { compute_usage } from "../compute-usage/index.js";
 
 export function message_handler(ws, condition, callback) {
     let listener = (message) => {
@@ -26,7 +27,7 @@ export function message_promise(ws, condition = () => true) {
     return new Promise(promise_handler)
 }
 
-export function convert_response_to_fn(response) {
+function extract_response_data(response) {
 
     let all_output = response.output
     let function_call = null
@@ -131,4 +132,90 @@ export function log_message_handler_factory(name) {
         }
         if (process.env.TAU_LOGGING > 0) return console.info(`τ`, name, data.type)
     }
+}
+
+export async function handle_response_creation({
+    ws,
+    model
+}) {
+
+    let audio_deltas = []
+    let total_duration = 0
+    let start_time = Date.now()
+    let first_audio_delta_compute_time = null
+    let first_text_delta_compute_time = null
+    let first_audio_delta_timestamp = null
+
+    async function delta_listener_process() {
+        let off_audio_handler = message_handler(
+            ws,
+            data => data.type === "response.audio.delta",
+            data => {
+                if (audio_deltas.length === 0) {
+                    first_audio_delta_timestamp = Date.now()
+                    first_audio_delta_compute_time = Date.now() - start_time
+                }
+                audio_deltas.push(data.delta)
+                let duration_ms = data.delta.length / 64
+                total_duration += duration_ms
+            }
+        )
+
+        let off_text_handler = message_handler(
+            ws,
+            data => (
+                data.type === "response.text.delta"
+            ),
+            _data => {
+                if (!first_text_delta_compute_time) {
+                    first_text_delta_compute_time = Date.now() - start_time
+                }
+            }
+        )
+        await message_promise(ws, data => data.type === "response.done")
+        off_audio_handler()
+        off_text_handler()
+
+    }
+
+    delta_listener_process()
+
+    let data = await message_promise(ws, data => {
+        if (data.type === "response.done") return true
+        if (data.type === "response.cancelled") return true
+    })
+    
+    let compute_time = Date.now() - start_time
+    if (data.type === "response.cancelled") {
+        console.warn("τ A response was cancelled")
+        return {
+            compute_time,
+            cancelled : true
+        }
+    }
+
+    if (data.response.status === "failed") {
+        if (process.env.TAU_LOGGING > 0) console.info(data.response)
+        console.warn("τ A response.create request failed after", compute_time, "ms")
+        return {
+            compute_time,
+            failed : true
+        }
+    }
+
+    let response_data = extract_response_data(data.response)
+    let usage = compute_usage({data, model})
+    let payload = {
+        compute_time,
+        get audio_deltas(){ return audio_deltas },
+        usage,
+        first_audio_delta_compute_time,
+        first_text_delta_compute_time,
+        first_audio_delta_timestamp,
+        total_audio_duration: total_duration,
+        ... response_data
+    }
+
+    return payload
+
 }

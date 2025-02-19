@@ -1,19 +1,17 @@
-import delay from "delay";
 import {
+    firstValueFrom,
     Subject
 } from "rxjs";
 import {
-    accumulate_usage,
-    compute_usage
+    accumulate_usage
 } from "../compute-usage/index.js";
 import {
     create_openai_realtime_ws
 } from "../create-ws/index.js";
 import {
-    convert_response_to_fn,
+    handle_response_creation,
     init_debug,
     log_message_handler_factory,
-    message_handler,
     message_promise,
     parse_message,
     send_ws
@@ -62,19 +60,12 @@ export async function create_session({
             event$.next(data)
         })
 
-        ws.on("message", (message) => {
+        ws.on("message", async (message) => {
             let data = parse_message(message)
-            if (data.type === "response.done") {
-                let usage = compute_usage({ data, model })
-                let fn_data = convert_response_to_fn(data.response)
-                _accumulated_usage = accumulate_usage(usage, _accumulated_usage)
-                response$.next({
-                    ... fn_data, 
-                    usage
-                })
-
+            if (data.type === "response.created") {
+                let response = await handle_response_creation({ws, model})
+                response$.next(response)
             }
-
         })
 
         await update_session({
@@ -118,8 +109,8 @@ export async function create_session({
     }
 
     async function create({ message, role }) {
-        if (_closed) throw new Error("Closed.")
-        if (!message) throw new Error("Content is required when creating a conversation item.")
+        if (_closed) throw new Error("τ Closed.")
+        if (!message) throw new Error("τ Content is required when creating a conversation item.")
         let type = role === "user" || role === "system" ? "input_text" : "text"
         let id = `tau-message-${++message_count}-${Date.now()}`
         send_ws(ws, {
@@ -220,11 +211,6 @@ export async function create_session({
         conversation = undefined,
         metadata = undefined,
         input = undefined,
-    } = {}, {
-        prev_compute_time = 0,
-        tries = 1,
-        max_time_to_respond = 60000,
-        max_tries = 3
     } = {}) {
 
         let response_arguments = {
@@ -240,15 +226,6 @@ export async function create_session({
         }
         if (_closed) throw new Error("Closed.")
 
-        if (tries > max_tries) {
-            console.warn(`τ Failed to get a response after ${tries} tries.`)
-            return null
-        }
-
-        let deltas = []
-        let total_duration = 0
-        let start_time = Date.now()
-        let response_has_completed = false
 
         if (process.env.TAU_LOGGING > 1) console.info("τ Response arguments", response_arguments)
         send_ws(ws, {
@@ -256,93 +233,9 @@ export async function create_session({
             response: response_arguments
         })
 
-        let timeout_promise = async function () {
-            let time_remaining = max_time_to_respond
-            while (time_remaining > 0) {
-                await delay(100)
-                time_remaining -= 100
-                if (response_has_completed) {
-                    return { error: false }
-                }
-            }
-            return { error: true }
-        }
-
-        let first_audio_delta_compute_time = null
-        let first_text_delta_compute_time = null
-        let first_audio_delta_timestamp = null
-
-        async function co_first_delta_process() {
-            let data = await message_promise(ws, data => data.type === "response.audio.delta" || data.type === "response.done" || data.type === "response.text.delta")
-            if (data.type === "response.audio.delta") {
-                first_audio_delta_timestamp = Date.now()
-                first_audio_delta_compute_time = Date.now() - start_time + prev_compute_time
-            }
-            if (data.type === "response.text.delta") {
-                first_text_delta_compute_time = Date.now() - start_time + prev_compute_time
-            }
-        }
-
-
-        async function delta_collector_process() {
-            let off = message_handler(ws, data => data.type === "response.audio.delta", (data) => {
-                deltas.push(data.delta)
-                let l = data.delta.length
-                total_duration += l / 64
-                // total_duration += l / 64000
-
-            })
-            await message_promise(ws, data => data.type === "response.done")
-            off()
-
-        }
-        co_first_delta_process()
-        delta_collector_process()
-        let data_promise = message_promise(ws, data => {
-            if (data.type === "response.done") return true
-            if (data.type === "response.cancelled") return true
-        })
-        let data = await Promise.race([timeout_promise(), data_promise])
-        response_has_completed = true
-
-        if (data.error) {
-            console.error("τ A response request timed out.")
-            return null
-        }
-
-        if (data.type === "response.cancelled") {
-            return null
-        }
-
-        let compute_time = Date.now() - start_time
-        let total_compute_time = compute_time + prev_compute_time
-
-        if (data.response.status === "failed") {
-            if (process.env.TAU_LOGGING > 0) console.info(data.response)
-            console.warn("τ response.create request failed after", compute_time, "ms")
-            return await response(response_arguments, {
-                tries: tries + 1,
-                prev_compute_time: total_compute_time,
-                max_time_to_respond,
-                max_tries
-            })
-        }
-
-        let usage = compute_usage({ data, model })
-        let fn_data = convert_response_to_fn(data.response)
-        _accumulated_usage = accumulate_usage(usage, _accumulated_usage)
-
-        let out_data = {
-            ...fn_data,
-            compute_time: total_compute_time,
-            first_text_delta_compute_time,
-            first_audio_delta_compute_time,
-            first_audio_delta_timestamp,
-            attempts: tries,
-            get audio_deltas() { return deltas },
-            total_audio_duration: total_duration
-        }
-        return out_data
+        let response_data = await firstValueFrom(response$)
+        _accumulated_usage = accumulate_usage(response_data.usage, _accumulated_usage)
+        return response_data
     }
 
     await init()
