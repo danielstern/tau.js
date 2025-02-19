@@ -1,6 +1,6 @@
 {
     "name": "@tau-js/core",
-    "version": "1.0.2-alpha",
+    "version": "1.0.3-alpha",
     "main": "index.js",
     "type": "module",
     "author" : "daniel j. stern (code whisperer)",
