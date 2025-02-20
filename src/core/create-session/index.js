@@ -33,7 +33,7 @@ export async function create_session({
     model = "4o",
     name = `tau-session-${++session_count}-${Date.now()}`,
     debug = process.env.TAU_DEBUG ?? false,
-    debug_voice_in = true
+    debug_voice_in = true,
 } = {}) {
 
     let ws = null
@@ -246,7 +246,9 @@ export async function create_session({
         assistant,
         response,
         close,
+        update_session,
         create_audio,
+        create,
         append_input_audio_buffer,
         commit_input_audio_buffer,
         cancel_response,

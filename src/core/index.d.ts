@@ -344,6 +344,11 @@ export declare async function create_session(
          * - Install the debug server with `npm install -g @tau-js/cli
          * - Run the debug server with `tau debug start`
          */
-        debug?: boolean
+        debug?: boolean,
+
+        /**
+         * If enabled, the session will receive audio from the debug server. Enabled by default.
+         */
+        debug_voice_in?: boolean
     })
     : Promise<Session>;

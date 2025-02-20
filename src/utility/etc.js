@@ -122,3 +122,15 @@ export async function save_deltas_as_wav(deltas, filename = `tmp/voice-${Date.no
         throw new Error("τ Encountered an error saving an audio file. Are you sure the folder to which you are trying to save the audio exists?")
     }
 }
+
+
+// export function make_function({
+//     name,
+//     description,
+//     parameters,
+//     session,
+//     handler
+// }) {
+
+
+// }
