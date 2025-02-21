@@ -56,7 +56,8 @@ export async function user_tty() {
 
 export async function audio_promise(session) {
     let data = await session.response()
-    return await audio_finished(data, 0)
+    await audio_finished(data, 0)
+    return data
 }
 
 export async function audio_finished(data, shift_time = 0) {
