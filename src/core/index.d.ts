@@ -314,6 +314,15 @@ export declare async function create_session(
          * Returning only audio is not supported.
          */
         modalities?: Modalities
+
+        /**
+        * Limits the length of text and voice responses. This option is important as along with modalities and model, it directly affects usage costs.
+        * 
+        * Default limit of 4096 consumes a lot of resources if the model generates that many tokens, so it makes sense to set a default limit.
+        * 
+        * If you find your responses are getting cut off after 10 seconds or so, try increasing this value.
+         */
+        max_response_output_tokens?: number,
     },
     /**
      * Options when creating the session related to configuration and debugging.

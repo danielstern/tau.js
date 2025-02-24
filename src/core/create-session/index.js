@@ -23,7 +23,7 @@ export async function create_session({
     modalities = ["text", "audio"],
     instructions = undefined,
     temperature = undefined,
-    max_response_output_tokens = undefined,
+    max_response_output_tokens = process.env.TAU_MAX_RESPONSE_OUTPUT_TOKENS ?? 512,
     tools = undefined,
     turn_detection = undefined,
     tool_choice = "none",
@@ -207,7 +207,6 @@ export async function create_session({
         tools = undefined,
         tool_choice = undefined,
         temperature = undefined,
-        max_response_output_tokens = undefined,
         conversation = undefined,
         metadata = undefined,
         input = undefined,
@@ -218,14 +217,11 @@ export async function create_session({
             tools,
             tool_choice,
             temperature,
-            max_response_output_tokens,
             conversation,
             metadata,
             input
-
         }
         if (_closed) throw new Error("Closed.")
-
 
         if (process.env.TAU_LOGGING > 1) console.info("τ Response arguments", response_arguments)
         send_ws(ws, {
