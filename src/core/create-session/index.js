@@ -23,7 +23,7 @@ export async function create_session({
     modalities = ["text", "audio"],
     instructions = undefined,
     temperature = undefined,
-    max_response_output_tokens = process.env.TAU_MAX_RESPONSE_OUTPUT_TOKENS ?? 512,
+    max_response_output_tokens = process.env.TAU_MAX_RESPONSE_OUTPUT_TOKENS ?? 768,
     tools = undefined,
     turn_detection = undefined,
     tool_choice = "none",
