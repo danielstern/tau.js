@@ -169,7 +169,7 @@ This example also showcases using a utility to save the audio is `wav` for later
 
 ```javascript
 import { create_session } from "@tau-js/core"
-import { audio_promise, save_deltas_as_wav } from "@tau-js/utility"
+import { audio_finished, save_deltas_as_wav } from "@tau-js/utility"
 
 let session = await create_session({
     modalities : ["text", "audio"],
@@ -190,7 +190,8 @@ for (let line of [
     "**CALMLY, ACCEPTING** Time... to die."
 ]) {
     await session.user(line)
-    let response = await audio_promise(session)
+    let response = await session.response()
+    await audio_finished(response)
     save_deltas_as_wav(response.audio_deltas)
 }
 

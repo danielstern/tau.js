@@ -25,11 +25,11 @@ export declare function load_md(
 export declare function user_tty() : Promise<string>
 
 /**
- * Invokes `.response()` on the provided session and returns a promise that resolves after the *total duration of the audio generated in the response.* This is distinct from how long it takes for the response to be generated.
+ * Returns a promise that resolves more or less when the audio returned in a response would finish playing, if it started playing as soon as the first delta was returned.
  * 
  * Useful for testing purposes.
  */
-export declare function audio_promise(session : Session) : Promise<void>
+export declare function audio_finished(response : Response) : Promise<void>
 
 /**
  * Conerts an array of deltas into a wav file and play it. Only works once all the deltas are in, which makes this suitable mostly for archival and development purposes. 

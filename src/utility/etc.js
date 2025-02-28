@@ -54,12 +54,6 @@ export async function user_tty() {
     })
 }
 
-export async function audio_promise(session) {
-    let data = await session.response()
-    await audio_finished(data, 0)
-    return data
-}
-
 export async function audio_finished(data, shift_time = 0) {
     let { first_audio_delta_timestamp, total_audio_duration } = data
     if (!first_audio_delta_timestamp) return

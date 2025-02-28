@@ -1,6 +1,6 @@
 {
     "name": "@tau-js/utility",
-    "version": "1.0.2-beta",
+    "version": "1.0.3-beta",
     "main": "etc.js",
     "type": "module",
     "author" : "daniel j. stern (code whisperer)",
