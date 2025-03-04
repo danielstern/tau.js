@@ -75,6 +75,9 @@ One of the most difficult parts of getting started with realtime audio is handli
 <img  src="https://storage.googleapis.com/owned-io-public-files/images/2025-02-12%2006_51_21-tau.js%20debugger.png">
 </a>
 
+### Session Recovery
+Sessions with AI models are nondeterministic, and sometimes they close unexpectedly. This is a big problem, because sometimes the state of your session with the model is closely tied to your application experience or other dependent models.
+`tau.js` solves this by adding customizable, sophisticated session recovery. When the socket closes unexpectedly, if recovery is enabled, tau will attempt to recreate a session as similar to the original as possible by replaying previous messages.
 
 ## Quick Start Guide
 Developing with Realtime AI Models is simple and easy with `tau.js`. You can be conversing with your model in short order by following these steps:
@@ -493,6 +496,9 @@ async function create_session(
   *Usage:*  
   - Install: `npm install -g @tau-js/cli`  
   - Run: `tau debug start`
+
+- **`recovery?`** (`RecoveryOptions`):
+  Defines behavior during automated session recovery procedure (occurs when websocket closes unexpectedly or times out.)
 
 ## Returns
 

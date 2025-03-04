@@ -25,7 +25,8 @@ Specify the \`api_key\` argument when creating a new session or set the OPENAI_A
     }
 
     function close_handler(name) {
-        throw new Error(`τ ${name} closed unexpectedly.`)
+        console.error(`τ ${name} closed unexpectedly.`)
+        // throw new Error(`τ ${name} closed unexpectedly. This can't be recovered from.`)
     }
 
     let url = null

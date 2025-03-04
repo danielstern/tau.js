@@ -154,6 +154,11 @@ export interface Session {
     async system(message: string): Promise<ConversationItem>
 
     /**
+     * Updates the current session with the provided options and returns the new configuration as provided by the server.
+     */
+    async update_session(session: SessionOptions): Promise<SessionDescription>
+
+    /**
      * Creates a new conversation item with the role `user` and the provided audio bytes as content.
      */
     async create_audio(bytes: string): Promise<ConversationItem>
@@ -164,7 +169,6 @@ export interface Session {
     * This is different from `create_audio` as it does not create a conversation item. Instead, a conversation item will be created when the buffer is committed. If turn detection is enabled, the buffer will be committed automatically.
     */
     async append_input_audio_buffer(bytes: string): Promise<void>
-
 
     /**
     * Commits all the audio in the audio input buffer, creating a conversation item.
@@ -218,8 +222,10 @@ export interface Session {
      * The websocket object currently connected to the model.
      * 
      * Use for very low-level debugging, making plugins, implementing features, etc. 
+     * 
+     * Fiddling with this directly will probably cause unexpected behaviors.
      */
-    ws: WebSocket
+    _ws: WebSocket
 
     /**
      * An observable which sends along any data sent from the remote server.
@@ -344,10 +350,13 @@ export declare async function create_session(
          * - **4o-mini:** Very inexpensive but random, unreliable and primitive. 20 million parameters.
          */
         model?: Model,
+
         /**
-         * Optional session identifier for debugging purposes.
+         * Optional session identifier for debugging purposes. 
+         * A model's name will appear in the model's window of the debugger.
          */
         name?: Name,
+
         /**
          * If enabled, the session will connect to the debug server. This can be used to listen to and debug session voice output in real time.
          * - Install the debug server with `npm install -g @tau-js/cli
@@ -359,5 +368,22 @@ export declare async function create_session(
          * If enabled, the session will receive audio from the debug server. Enabled by default.
          */
         debug_voice_in?: boolean
+
+        /**
+         * If not null, if the websocket connection closes unexpectedly, the session will attempt to automatically recover.
+         */
+        recovery : {
+            /**
+             * If true, the recovery process will attempt to recreate all conversation items and regenerate all responses that existed in the conversation prior to the websocket closing.
+             * If disabled, recovery will only consist of recreating the websocket connection and updating the session
+             */
+            replay_messages? : boolean,
+
+            /**
+             * The maximum number of responses the recovery process will attempt to regenerate.
+             * Responses appearing in the recovery log after the maximum number of regenerated responses has already been reached will be ignored.
+             */
+            max_regenerate_response_count : number
+        }
     })
     : Promise<Session>;
