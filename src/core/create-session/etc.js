@@ -189,21 +189,23 @@ export async function handle_response_creation({
     })
     
     let compute_time = Date.now() - start_time
-    if (data.type === "response.cancelled") {
+    if (data.type === "response.cancelled" || data.response?.status == "cancelled") {
         console.warn("τ A response was cancelled")
-        return {
-            compute_time,
-            cancelled : true
-        }
+        return null
+        // return {
+        //     compute_time,
+        //     cancelled : true
+        // }
     }
 
     if (data.response.status === "failed") {
         if (process.env.TAU_LOGGING > 0) console.info(data.response)
         console.warn("τ A response.create request failed after", compute_time, "ms")
-        return {
-            compute_time,
-            failed : true
-        }
+        return null
+        // return {
+        //     compute_time,
+        //     failed : true
+        // }
     }
 
     let response_data = extract_response_data(data.response)

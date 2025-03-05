@@ -40,7 +40,8 @@ export async function create_session({
     recovery = {
         replay_messages: true,
         max_regenerate_response_count: 32
-    }
+    },
+    autocancel_response = true
 } = {}) {
 
     let ws = null
@@ -53,10 +54,17 @@ export async function create_session({
     let debug_ws = null
     let created = Date.now()
     let ready = false
+    let is_responding = false
+    let is_cancelling = true
 
     function send_ws(ws, data) {
-        log.push({ type: "outgoing", data })
-        ws.send(JSON.stringify(data))
+        try {
+
+            log.push({ type: "outgoing", data })
+            ws.send(JSON.stringify(data))
+        } catch (e) {
+            console.info("Encountered an error sending a message via websocket", e)
+        }
     }
 
     async function init({
@@ -132,8 +140,12 @@ export async function create_session({
         ws.on("message", async (message) => {
             let data = parse_message(message)
             if (data.type === "response.created") {
+                is_responding = true
                 let response = await handle_response_creation({ ws, model })
-                response$.next(response)
+                is_responding = false
+                if (response) {
+                    response$.next(response)
+                }
             }
         })
 
@@ -199,6 +211,18 @@ export async function create_session({
                 }
                 if (Date.now() - start_time > max_duration) {
                     throw new Error("Ready promise failed to resolve after", max_duration, "ms.")
+                }
+                await delay(10)
+            }
+
+        })
+    }
+    const cancelling_complete_promise = () => {
+        return new Promise(async (resolve)=>{
+            while (true) {
+                if (!is_cancelling) {
+                    resolve()
+                    return
                 }
                 await delay(10)
             }
@@ -298,8 +322,15 @@ export async function create_session({
     }
 
     async function cancel_response() {
+        if (is_cancelling) {
+            return await cancelling_complete_promise()
+        }
+        is_cancelling = true
         send_ws(ws, { type: "response.cancel" })
-        return await message_promise(ws, data => data.type === "response.done")
+        let done = await message_promise(ws, data => data.type === "response.done")
+        is_cancelling = false
+        is_responding = false
+        return done
     }
 
     async function delete_conversation_item(item_id) {
@@ -319,6 +350,12 @@ export async function create_session({
 
         await ready_promise()
 
+        if (is_responding && autocancel_response) {
+            // console.info("Cancel", is_responding, autocancel_response)
+            await cancel_response()
+
+        }
+
         let response_arguments = {
             instructions,
             tools,
@@ -337,6 +374,7 @@ export async function create_session({
         })
 
         let response_data = await firstValueFrom(response$)
+        // console.info(response_data)
         _accumulated_usage = accumulate_usage(response_data.usage, _accumulated_usage)
         return response_data
     }
