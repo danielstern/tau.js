@@ -3,6 +3,7 @@ import { describe, it, expect } from "vitest";
 import { create_session } from "./index.js"; 
 import delay from "delay";
 
+process.env.TAU_LOGGING = 1
 describe("Websocket Session Recovery (Full)", { timeout: 20000 }, () => {
     it("should recover to its current state", async () => {
         let ws_tester = await create_session({
@@ -67,3 +68,39 @@ describe("Websocket Session Recovery (Partial)", { timeout: 20000 }, () => {
         ws_tester.close();
     });
 });
+
+// todo, not right
+
+// describe.only("Websocket Session Recovery (Blocked due to Error)", { timeout: 20000 }, () => {
+//     it("should not try to recover if a session error is thrown", async () => {
+
+//         // expect(async function(){
+//         //     // let ws_tester = await create_session({
+//         //     //     voice : "elmo/terminator", // specifying this voice value will throw an error
+//         //     //     turn_detection: null,
+//         //     //     modalities : ["text"]
+//         //     // }, {
+//         //     //     recovery: {
+//         //     //         replay_messages: false
+//         //     //     },
+//         //     //     model: "4o-mini",
+//         //     //     debug: true
+//         //     // });
+          
+//         //     // ws_tester.close();
+//         // }).toThrow()
+//         let ws_tester = await create_session({
+//             voice : "elmo/terminator", // specifying this voice value will throw an error
+//             turn_detection: null,
+//             modalities : ["text"]
+//         }, {
+//             recovery: {
+//                 replay_messages: false
+//             },
+//             model: "4o-mini",
+//             debug: true
+//         });
+      
+//         ws_tester.close();
+//     });
+// });

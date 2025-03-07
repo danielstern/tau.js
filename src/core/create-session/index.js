@@ -55,7 +55,8 @@ export async function create_session({
     let created = Date.now()
     let ready = false
     let is_responding = false
-    let is_cancelling = true
+    let is_cancelling = false
+    let websocket_error = true
 
     function send_ws(ws, data) {
         try {
@@ -79,6 +80,10 @@ export async function create_session({
 
         if (recovery_mode) {
             console.info("τ Recovering websocket session [experimental!]")
+            if (websocket_error) {
+                console.info("websocket error?", websocket_error)
+                // throw new Error("Can't recover due to websocket error.")
+            }
             let recovery_start = Date.now()
             let outgoing_sent = 0
             let responses_regenerated = 0
@@ -147,6 +152,10 @@ export async function create_session({
                     response$.next(response)
                 }
             }
+        })
+
+        ws.on("error", async (e)=>{
+            websocket_error = e
         })
 
         ws.on("close", () => {
@@ -322,9 +331,12 @@ export async function create_session({
     }
 
     async function cancel_response() {
-        if (is_cancelling) {
-            return await cancelling_complete_promise()
-        }
+        // console.table({
+        //     is_cancelling
+        // })
+        // if (is_cancelling) {
+        //     return await cancelling_complete_promise()
+        // }
         is_cancelling = true
         send_ws(ws, { type: "response.cancel" })
         let done = await message_promise(ws, data => data.type === "response.done")
@@ -352,7 +364,8 @@ export async function create_session({
 
         if (is_responding && autocancel_response) {
             // console.info("Cancel", is_responding, autocancel_response)
-            await cancel_response()
+            console.warn("Can't autocancel.")
+            // await cancel_response()
 
         }
 
