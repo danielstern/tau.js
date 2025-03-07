@@ -7,7 +7,7 @@ Transcribe fragments that were too distorted to hear clearly as ???
 Don't surround output in quotes or add extra commentary.
 `
 export async function create_transcriber({
-    debug = true,
+    debug = false,
     silence_duration_ms = 1200,
     create_response = true,
     name = "transcriber"

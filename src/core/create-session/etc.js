@@ -125,8 +125,9 @@ export function log_message_handler_factory(name) {
         const data = parse_message(message)
         if (data.error) {
             let msg = `τ ${name} error: ${data.error.message}`
-            throw new Error(msg)
-            // return console.error()
+            // throw new Error(msg)
+            // what should we do here?
+            return console.error(msg)
         }
 
         if (process.env.TAU_LOGGING > 1) {

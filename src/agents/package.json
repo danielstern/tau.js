@@ -8,7 +8,9 @@
         ".": "./index.js"
     },
     "dependencies": {
-        "@tau-js/core": "^1.0.6-alpha"
+        "@tau-js/core": "^1.0.6-alpha",
+        "@tau-js/utility": "^1.0.3-beta"
+
     },
     "publishConfig": {
         "access": "public"
