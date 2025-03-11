@@ -1,6 +1,6 @@
 import { audio_finished } from "@tau-js/utility"
 export async function tutorial(agent, lessons, {
-    await_responses = false
+    await_responses = true
 } = {}) {
     console.info("Tutorial for", agent.name)
     let items = []

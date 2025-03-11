@@ -1,6 +1,6 @@
 {
     "name": "@tau-js/cli",
-    "version": "1.0.3-alpha",
+    "version": "1.1.0-alpha",
     "type": "module",
     "bin": {
         "tau": "./bin/cli.js"
@@ -8,7 +8,7 @@
     "author": "daniel j. stern (code whisperer)",
     "license": "MIT",
     "dependencies": {
-        "@tau-js/debug": "^1.0.2-alpha",
+        "@tau-js/server": "^1.0.1-beta",
         "open": "^10.1.0"
     },
     "publishConfig": {
@@ -18,9 +18,5 @@
         "type": "git",
         "url": "https://github.com/danielstern/tau.js.git",
         "directory": "packages/cli"
-    },
-    "homepage": "https://github.com/danielstern/tau.js#readme",
-    "bugs": {
-        "url": "https://github.com/danielstern/tau.js/issues"
     }
 }

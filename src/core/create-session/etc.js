@@ -74,46 +74,35 @@ export function parse_message(message) {
     return parsed_message
 }
 
-export async function init_debug({
+export async function connect_to_tau_ws({
+    ws_url,
     event$,
     name,
     session,
-    create_audio,
-    create_audio_stream,
-    debug_voice_in
+    append_input_audio_buffer,
+    handle_ws_voice_in
 }) {
-    let debug_server_url = process.env.TAU_DEBUG_SERVER_URL ?? `ws://localhost:30020`
-    let debug_ws = new WebSocket(`${debug_server_url}/provider`)
-    debug_ws.on("error", () => {
-        console.warn(
-            `Tried to connect to the debug server, but none was found at the specified URL.
-- If you don't want to run the debug server, make sure that \`debug\` is false when creating a new session
-- If you do want to connect to the debug server, make sure it is running. To run the debug server
-use \`tau debug start\`:
-npm install -g tau
-tau debug start`
-        )
+    let tau_ws = new WebSocket(`${ws_url}/model`)
+    tau_ws.on("error", () => {
+        console.warn( `τ Tried to connect to the server, but none was found at the specified URL.`)
     })
-    debug_ws.on("message", async (message) => {
-        
+    tau_ws.on("message", async (message) => {
         let data = parse_message(message)
+        if (process.env.TAU_LOGGING > 0) console.info(`τ ${name} received message '${data.type}' from a client`)
         if (data.type === "connection.complete") {
-            console.info("τ Connected to Debug Server.")
+            console.info("τ Connected to Tau Server.")
         }
-        if (!debug_voice_in) return
-        if (data.type === "user.audio.input") {
-            await create_audio(data.bytes)
-        }
-        if (data.type === "user.audio.stream") {
-            await create_audio_stream(data.bytes)
+        if (data.type === "user.audio.stream" && handle_ws_voice_in) {
+            // console.info("Appending bytes", data.bytes.length)
+            await append_input_audio_buffer(data.bytes)
         }
     })
 
     event$.subscribe(data => {
-        send_ws(debug_ws, { session_id: name, ...data, session })
+        send_ws(tau_ws, { ...data, session })
     })
 
-    return debug_ws
+    return tau_ws
 }
 
 export function send_ws(ws, data) {
@@ -125,8 +114,6 @@ export function log_message_handler_factory(name) {
         const data = parse_message(message)
         if (data.error) {
             let msg = `τ ${name} error: ${data.error.message}`
-            // throw new Error(msg)
-            // what should we do here?
             return console.error(msg)
         }
 

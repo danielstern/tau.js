@@ -3,7 +3,6 @@ import express from 'express';
 import { WebSocketServer } from 'ws';
 import { Subject } from "rxjs"
 
-
 function parse_message(message) {
     const message_string = message.toString();
     const parsed_message = JSON.parse(message_string);
@@ -20,34 +19,46 @@ export function create_server({
 
     const wss = new WebSocketServer({ noServer: true });
 
-    let consumers = []
-    let consumer_count = 0
+    let models = []
+    let clients = []
     let message_from_client$ = new Subject()
-    let message_to_client$ = new Subject()
+    let message_from_model$ = new Subject()
 
-    wss.on('connection', async (ws) => {
-        let id = `consumer-${++consumer_count}`
-        console.info("τ Server: A new client connected")
+    wss.on('connection', async (ws, request) => {
+        let { url } = request
         
-        ws.send(JSON.stringify({ 
-            type: "connection.complete"
-        }))
-        consumers.push({ ws, id })
-
-        ws.on("message", message => {
-            let data = parse_message(message)
-            message_from_client$.next(data)
-        })
-        
-        ws.on("close", () => {
-            consumers = consumers.filter(c => c.id !== id)
-        })
-    })
-
-    message_to_client$.subscribe(data => {
-        for (let consumer of consumers) {
-            consumer.ws.send(JSON.stringify(data))
+        if (url === "/model") {
+            models.push(ws)
+            ws.send(JSON.stringify({ type: "connection.complete" }))
+            if (process.env.TAU_LOGGING > 0) console.log("τ Server: A model connected");
+            ws.on("message", message => {
+                let data = parse_message(message)
+                for (let client of clients) client.send(JSON.stringify(data))
+            })
+            ws.on('close', () => {
+                console.log("τ Server: A model disconnected");
+                models = models.filter(m => m !== ws)
+            });
+            return
         }
+
+        if (url === "/client") {
+            clients.push(ws)
+            ws.send(JSON.stringify({ type: "connection.complete" }))
+            if (process.env.TAU_LOGGING > 0) console.log("τ Server: A client connected");
+            ws.on("message", message => {
+                let data = parse_message(message)
+                for (let model of models) model.send(JSON.stringify(data))
+            })
+            ws.on('close', () => {
+                console.log("τ Server: A client disconnected");
+                clients = clients.filter(c => c !== ws)
+            });
+            return
+        }
+
+        ws.send(JSON.stringify({type: "error", message: "must connect to /model or /client"}))
+        ws.close()
     })
 
     const server = app.listen(port, () => {
@@ -60,14 +71,20 @@ export function create_server({
         });
     });
 
-
     app.get('/', (_req, res) => {
-        res.send('ok');
+        res.json({
+            status:'ok',
+            models_connected: models.length,
+            clients_connected : clients.length
+        });
     });
 
+    function close(){
+        server.close()
+    }
     return {
-        server,
         message_from_client$,
-        message_to_client$
+        message_from_model$,
+        close,
     }
 }

@@ -10,8 +10,9 @@ import {
     create_openai_realtime_ws
 } from "../create-ws/index.js";
 import {
+    connect_to_tau_ws,
     handle_response_creation,
-    init_debug,
+    // init_debug,
     log_message_handler_factory,
     message_promise,
     parse_message,
@@ -34,8 +35,8 @@ export async function create_session({
     api_key = null,
     model = "4o",
     name = `tau-session-${++session_count}-${Date.now()}`,
-    debug = process.env.TAU_DEBUG ?? false,
-    debug_voice_in = true,
+    ws_url = process.env.TAU_WS_URL ?? `ws://localhost:30033`,
+    handle_ws_voice_in = true,
     log = [],
     recovery = {
         replay_messages: true,
@@ -44,14 +45,14 @@ export async function create_session({
     autocancel_response = true
 } = {}) {
 
-    let ws = null
+    let openai_ws = null
+    let tau_ws = null
     let event$ = new Subject()
     let response$ = new Subject()
     let _session = null
     let _accumulated_usage = null
     let _closed = false
     let message_count = 0
-    let debug_ws = null
     let created = Date.now()
     let ready = false
     let is_responding = false
@@ -71,12 +72,12 @@ export async function create_session({
     async function init({
         recovery_mode = false
     } = {}) {
-        ws = create_openai_realtime_ws({
+        openai_ws = create_openai_realtime_ws({
             api_key,
             model,
             name
         })
-        await message_promise(ws, data => data.type === "session.created")
+        await message_promise(openai_ws, data => data.type === "session.created")
 
         if (recovery_mode) {
             console.info("τ Recovering websocket session [experimental!]")
@@ -90,20 +91,20 @@ export async function create_session({
             let outgoing_logged = log.filter(a => a.type === "outgoing")
             for (let { data } of outgoing_logged) {
                 if (data.type === "session.update") {
-                    ws.send(JSON.stringify(data))
+                    openai_ws.send(JSON.stringify(data))
                     outgoing_sent++
                     await message_promise(
-                        ws,
+                        openai_ws,
                         data => data.type === "session.updated"
                     )
                 }
 
                 if (recovery?.replay_messages) {
                     if (data.type === "conversation.item.create") {
-                        ws.send(JSON.stringify(data))
+                        openai_ws.send(JSON.stringify(data))
                         outgoing_sent++
                         await message_promise(
-                            ws,
+                            openai_ws,
                             data => data.type === "conversation.item.created"
                         )
                     }
@@ -112,8 +113,8 @@ export async function create_session({
                         if (responses_regenerated < recovery?.max_regenerate_response_count) {
                             responses_regenerated++
                             console.info("τ Recreating response...")
-                            ws.send(JSON.stringify(data))
-                            let response_data = await message_promise(ws, data => {
+                            openai_ws.send(JSON.stringify(data))
+                            let response_data = await message_promise(openai_ws, data => {
                                 if (data.type === "response.done") return true
                                 if (data.type === "response.cancelled") return true
                             })
@@ -132,21 +133,21 @@ export async function create_session({
         }
 
 
-        ws.on("message", log_message_handler_factory(name))
-        ws.on("message", (message) => {
+        openai_ws.on("message", log_message_handler_factory(name))
+        openai_ws.on("message", (message) => {
             let data = parse_message(message)
             log.push({ type: "incoming", data })
         })
-        ws.on("message", (message) => {
+        openai_ws.on("message", (message) => {
             let data = parse_message(message)
             event$.next(data)
         })
 
-        ws.on("message", async (message) => {
+        openai_ws.on("message", async (message) => {
             let data = parse_message(message)
             if (data.type === "response.created") {
                 is_responding = true
-                let response = await handle_response_creation({ ws, model })
+                let response = await handle_response_creation({ ws: openai_ws, model })
                 is_responding = false
                 if (response) {
                     response$.next(response)
@@ -154,13 +155,13 @@ export async function create_session({
             }
         })
 
-        ws.on("error", async (e)=>{
+        openai_ws.on("error", async (e)=>{
             websocket_error = e
         })
 
-        ws.on("close", () => {
+        openai_ws.on("close", () => {
             console.info("τ Websocket closed unexpectedly.")
-            ws = null
+            openai_ws = null
             ready = false
             if (recovery) {
                 console.info("τ Attempting to recover websocket session.")
@@ -182,30 +183,40 @@ export async function create_session({
                 voice,
             })
 
-            if (debug) debug_ws = await init_debug({
+            // if (debug) tau_ws = await init_debug({
+            //     event$,
+            //     name,
+            //     session: _session,
+            //     create_audio,
+            //     create_audio_stream: append_input_audio_buffer,
+            //     response,
+            //     debug_voice_in
+            // })
+
+            if (ws_url) tau_ws = await connect_to_tau_ws({
+                ws_url,
                 event$,
                 name,
                 session: _session,
-                create_audio,
-                create_audio_stream: append_input_audio_buffer,
+                append_input_audio_buffer,
                 response,
-                debug_voice_in
+                handle_ws_voice_in
             })
 
         }
 
         ready = true
-        return ws
+        return openai_ws
     }
 
     function close() {
-        if (debug_ws) {
-            debug_ws.removeAllListeners()
-            debug_ws.close()
+        if (tau_ws) {
+            tau_ws.removeAllListeners()
+            tau_ws.close()
         }
-        ws.removeAllListeners()
-        ws.close()
-        ws = null
+        openai_ws.removeAllListeners()
+        openai_ws.close()
+        openai_ws = null
         ready = false
     }
 
@@ -240,8 +251,8 @@ export async function create_session({
     }
 
     async function update_session(updates) {
-        send_ws(ws, { type: "session.update", session: updates });
-        let { session } = await message_promise(ws, data => data.type === "session.updated")
+        send_ws(openai_ws, { type: "session.update", session: updates });
+        let { session } = await message_promise(openai_ws, data => data.type === "session.updated")
         _session = session
         if (process.env.TAU_LOGGING > 0) console.info("τ Updated session", _session)
     }
@@ -251,7 +262,7 @@ export async function create_session({
         if (!message) throw new Error("τ Content is required when creating a conversation item.")
         let type = role === "user" || role === "system" ? "input_text" : "text"
         let id = `tau-message-${++message_count}-${Date.now()}`
-        send_ws(ws, {
+        send_ws(openai_ws, {
             type: "conversation.item.create",
             item: {
                 id,
@@ -267,7 +278,7 @@ export async function create_session({
         })
 
         let data = await message_promise(
-            ws,
+            openai_ws,
             data => data.type === "conversation.item.created" && data.item.id === id
         )
         return data.item
@@ -278,7 +289,7 @@ export async function create_session({
         let type = "input_audio"
         let id = `tau-audio-${++message_count}-${Date.now()}`
 
-        send_ws(ws, {
+        send_ws(openai_ws, {
             type: "conversation.item.create",
             item: {
                 id,
@@ -294,7 +305,7 @@ export async function create_session({
         })
 
         let data = await message_promise(
-            ws,
+            openai_ws,
             data => data.type === "conversation.item.created" && data.item.id === id
         )
 
@@ -303,19 +314,19 @@ export async function create_session({
 
     async function append_input_audio_buffer(bytes) {
         if (!bytes) return console.warn("τ No audio input detected.")
-        send_ws(ws, {
+        send_ws(openai_ws, {
             type: "input_audio_buffer.append",
             audio: bytes
         })
     }
 
     async function commit_input_audio_buffer() {
-        send_ws(ws, {
+        send_ws(openai_ws, {
             type: "input_audio_buffer.commit",
         })
 
         await message_promise(
-            ws,
+            openai_ws,
             data => data.type === "input_audio_buffer.committed"
         )
     }
@@ -338,16 +349,16 @@ export async function create_session({
         //     return await cancelling_complete_promise()
         // }
         is_cancelling = true
-        send_ws(ws, { type: "response.cancel" })
-        let done = await message_promise(ws, data => data.type === "response.done")
+        send_ws(openai_ws, { type: "response.cancel" })
+        let done = await message_promise(openai_ws, data => data.type === "response.done")
         is_cancelling = false
         is_responding = false
         return done
     }
 
     async function delete_conversation_item(item_id) {
-        send_ws(ws, { type: "conversation.item.delete", item_id })
-        await message_promise(ws, data => data.type === "conversation.item.deleted")
+        send_ws(openai_ws, { type: "conversation.item.delete", item_id })
+        await message_promise(openai_ws, data => data.type === "conversation.item.deleted")
     }
 
     async function response({
@@ -381,7 +392,7 @@ export async function create_session({
         if (_closed) throw new Error("Closed.")
 
         if (process.env.TAU_LOGGING > 1) console.info("τ Response arguments", response_arguments)
-        send_ws(ws, {
+        send_ws(openai_ws, {
             type: "response.create",
             response: response_arguments
         })
@@ -415,6 +426,6 @@ export async function create_session({
         get session() { return _session },
         get usage() { return _accumulated_usage },
         get log() { return log },
-        get _ws() { return ws },
+        get _ws() { return openai_ws },
     }
 }
