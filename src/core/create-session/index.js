@@ -1,10 +1,10 @@
+import delay from "delay";
 import {
     firstValueFrom,
     Subject
 } from "rxjs";
 import {
-    accumulate_usage,
-    compute_usage
+    accumulate_usage
 } from "../compute-usage/index.js";
 import {
     create_openai_realtime_ws
@@ -12,13 +12,11 @@ import {
 import {
     connect_to_tau_ws,
     handle_response_creation,
-    // init_debug,
     log_message_handler_factory,
     message_promise,
     parse_message,
-    // send_ws
 } from "./etc.js";
-import delay from "delay"
+import { recover_session } from "./recovery/index.js";
 
 let session_count = 0
 
@@ -39,16 +37,17 @@ export async function create_session({
     handle_ws_voice_in = true,
     log = [],
     recovery = {
-        replay_messages: true,
-        max_regenerate_response_count: 32
-    },
-    autocancel_response = true
+        replay_messages: false,
+        max_regenerate_response_count: 0
+    }
 } = {}) {
 
     let openai_ws = null
     let tau_ws = null
     let event$ = new Subject()
     let response$ = new Subject()
+    let response_create$ = new Subject()
+    let response_cancelled$ = new Subject()
     let _session = null
     let _accumulated_usage = null
     let _closed = false
@@ -56,12 +55,10 @@ export async function create_session({
     let created = Date.now()
     let ready = false
     let is_responding = false
-    let is_cancelling = false
-    let websocket_error = true
+    let websocket_error = null
 
     function send_ws(ws, data) {
         try {
-
             log.push({ type: "outgoing", data })
             ws.send(JSON.stringify(data))
         } catch (e) {
@@ -72,6 +69,7 @@ export async function create_session({
     async function init({
         recovery_mode = false
     } = {}) {
+
         openai_ws = create_openai_realtime_ws({
             api_key,
             model,
@@ -82,56 +80,20 @@ export async function create_session({
         if (recovery_mode) {
             console.info("τ Recovering websocket session [experimental!]")
             if (websocket_error) {
-                console.info("websocket error?", websocket_error)
-                // throw new Error("Can't recover due to websocket error.")
+                console.info("Can't recover",websocket_error)
+                throw new Error("Can't recover due to websocket error.")
             }
-            let recovery_start = Date.now()
-            let outgoing_sent = 0
-            let responses_regenerated = 0
-            let outgoing_logged = log.filter(a => a.type === "outgoing")
-            for (let { data } of outgoing_logged) {
-                if (data.type === "session.update") {
-                    openai_ws.send(JSON.stringify(data))
-                    outgoing_sent++
-                    await message_promise(
-                        openai_ws,
-                        data => data.type === "session.updated"
-                    )
+            await recover_session({
+                name,
+                model,
+                openai_ws,
+                ... recovery,
+                log,
+                handle_usage(usage){
+                    _accumulated_usage = accumulate_usage(usage, _accumulated_usage)
                 }
-
-                if (recovery?.replay_messages) {
-                    if (data.type === "conversation.item.create") {
-                        openai_ws.send(JSON.stringify(data))
-                        outgoing_sent++
-                        await message_promise(
-                            openai_ws,
-                            data => data.type === "conversation.item.created"
-                        )
-                    }
-
-                    if (data.type === "response.create") {
-                        if (responses_regenerated < recovery?.max_regenerate_response_count) {
-                            responses_regenerated++
-                            console.info("τ Recreating response...")
-                            openai_ws.send(JSON.stringify(data))
-                            let response_data = await message_promise(openai_ws, data => {
-                                if (data.type === "response.done") return true
-                                if (data.type === "response.cancelled") return true
-                            })
-                            let usage = compute_usage({data : response_data, model})
-                            _accumulated_usage = accumulate_usage(usage, _accumulated_usage)
-                            console.info("τ Recreated response successfully.")
-                        } else {
-                            console.info("τ Maximum number of responses (", recovery?.max_regenerate_response_count, ") to regenerate already reached. Skipping response regeneration.")
-                        }
-
-                    }
-                }
-            }
-            console.info("τ Recovered websocket", name, "in", Date.now() - recovery_start, "ms. Recreated", outgoing_sent, "outgoing messages and regenerated", responses_regenerated, "responses.")
-            
+            })
         }
-
 
         openai_ws.on("message", log_message_handler_factory(name))
         openai_ws.on("message", (message) => {
@@ -147,10 +109,14 @@ export async function create_session({
             let data = parse_message(message)
             if (data.type === "response.created") {
                 is_responding = true
+                response_create$.next({})
                 let response = await handle_response_creation({ ws: openai_ws, model })
                 is_responding = false
                 if (response) {
                     response$.next(response)
+                } 
+                else {
+                    response_cancelled$.next({})
                 }
             }
         })
@@ -182,16 +148,6 @@ export async function create_session({
                 tool_choice,
                 voice,
             })
-
-            // if (debug) tau_ws = await init_debug({
-            //     event$,
-            //     name,
-            //     session: _session,
-            //     create_audio,
-            //     create_audio_stream: append_input_audio_buffer,
-            //     response,
-            //     debug_voice_in
-            // })
 
             if (ws_url) tau_ws = await connect_to_tau_ws({
                 ws_url,
@@ -237,19 +193,7 @@ export async function create_session({
 
         })
     }
-    const cancelling_complete_promise = () => {
-        return new Promise(async (resolve)=>{
-            while (true) {
-                if (!is_cancelling) {
-                    resolve()
-                    return
-                }
-                await delay(10)
-            }
-
-        })
-    }
-
+    
     async function update_session(updates) {
         send_ws(openai_ws, { type: "session.update", session: updates });
         let { session } = await message_promise(openai_ws, data => data.type === "session.updated")
@@ -342,12 +286,6 @@ export async function create_session({
     }
 
     async function cancel_response() {
-        // console.table({
-        //     is_cancelling
-        // })
-        // if (is_cancelling) {
-        //     return await cancelling_complete_promise()
-        // }
         is_cancelling = true
         send_ws(openai_ws, { type: "response.cancel" })
         let done = await message_promise(openai_ws, data => data.type === "response.done")
@@ -373,13 +311,6 @@ export async function create_session({
 
         await ready_promise()
 
-        if (is_responding && autocancel_response) {
-            // console.info("Cancel", is_responding, autocancel_response)
-            console.warn("Can't autocancel.")
-            // await cancel_response()
-
-        }
-
         let response_arguments = {
             instructions,
             tools,
@@ -398,7 +329,6 @@ export async function create_session({
         })
 
         let response_data = await firstValueFrom(response$)
-        // console.info(response_data)
         _accumulated_usage = accumulate_usage(response_data.usage, _accumulated_usage)
         return response_data
     }
@@ -420,6 +350,8 @@ export async function create_session({
         delete_conversation_item,
         event$,
         response$,
+        response_create$,
+        response_cancelled$,
         get created() { return created},
         get ready() { return ready },
         get name() { return name },
