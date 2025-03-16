@@ -48,6 +48,8 @@ export async function create_session({
     let response$ = new Subject()
     let response_create$ = new Subject()
     let response_cancelled$ = new Subject()
+    let error$ = new Subject()
+    let recovered$ = new Subject()
     let _session = null
     let _accumulated_usage = null
     let _closed = false
@@ -81,6 +83,7 @@ export async function create_session({
             console.info("τ Recovering websocket session [experimental!]")
             if (websocket_error) {
                 console.info("Can't recover",websocket_error)
+                error$.next()
                 throw new Error("Can't recover due to websocket error.")
             }
             await recover_session({
@@ -93,6 +96,7 @@ export async function create_session({
                     _accumulated_usage = accumulate_usage(usage, _accumulated_usage)
                 }
             })
+            recovered$.next()
         }
 
         openai_ws.on("message", log_message_handler_factory(name))
@@ -122,6 +126,7 @@ export async function create_session({
         })
 
         openai_ws.on("error", async (e)=>{
+            error$.next(e)
             websocket_error = e
         })
 
@@ -133,7 +138,8 @@ export async function create_session({
                 console.info("τ Attempting to recover websocket session.")
                 init({ recovery_mode: true })
             } else {
-                throw new Error("τ Websocket session recovery disabled.")
+                throw new Error("τ Websocket closed (No recovery enabled).")
+                error$.next()
             }
         })
 
@@ -307,6 +313,7 @@ export async function create_session({
         conversation = undefined,
         metadata = undefined,
         input = undefined,
+        modalities = undefined
     } = {}) {
 
         await ready_promise()
@@ -318,6 +325,7 @@ export async function create_session({
             temperature,
             conversation,
             metadata,
+            modalities,
             input
         }
         if (_closed) throw new Error("Closed.")
@@ -348,6 +356,8 @@ export async function create_session({
         commit_input_audio_buffer,
         cancel_response,
         delete_conversation_item,
+        error$,
+        recovered$,
         event$,
         response$,
         response_create$,
