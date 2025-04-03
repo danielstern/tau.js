@@ -244,6 +244,8 @@ export interface Session {
      * Usage: `response$.subscribe(handler)`
      */
     response$: Observable<Response>
+
+    active_task_count : number
 }
 
 /**

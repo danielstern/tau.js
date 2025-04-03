@@ -200,6 +200,7 @@ export async function handle_response_creation({
     let response_data = extract_response_data(data.response)
     let usage = compute_usage({data, model})
     let payload = {
+        response_id : data.response.id,
         compute_time,
         get audio_deltas(){ return audio_deltas },
         usage,
