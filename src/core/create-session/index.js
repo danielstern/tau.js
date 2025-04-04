@@ -140,7 +140,7 @@ export async function create_session({
     async function create({ message, role }) {
         if (!message) throw new Error("τ Content is required when creating a conversation item.")
         let type = role === "user" || role === "system" ? "input_text" : "text"
-        let id = `tau-message-${v4()}-${Date.now()}`
+        let id = v4().slice(0,32)
         send_ws(openai_ws, {
             type: "conversation.item.create",
             item: {
@@ -308,6 +308,7 @@ export async function create_session({
                 if (is_done) {
                     return {
                         status : "completed",
+                        response_id,
                         response : last_response,
                         total_audio_duration,
                         transcript : text_deltas.join("")
