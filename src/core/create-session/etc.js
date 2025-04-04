@@ -1,6 +1,5 @@
 
 import WebSocket from "ws";
-import { compute_usage } from "../compute-usage/index.js";
 
 export function message_handler(ws, condition, callback) {
     let listener = (message) => {
@@ -27,46 +26,6 @@ export function message_promise(ws, condition = () => true) {
     return new Promise(promise_handler)
 }
 
-function extract_response_data(response) {
-
-    let all_output = response.output
-    let function_call = null
-    let transcript = null
-    if (!all_output) {
-        console.warn("τ A response was returned with no output value.")
-    } else {
-
-        for (let output of all_output) {
-
-            if (output.type === "message") {
-                let content = output.content[0]
-                if (!content) {
-                    if (process.env.TAU_LOGGING > 0) console.warn("τ A response was returned with no content.")
-                    console.warn(JSON.stringify(response, null, 2))
-                } else {
-                    let message = content.text || content.transcript
-                    transcript = message
-                }
-            }
-            if (output.type === "function_call") {
-                let name = output.name
-                let parameters = null
-                try {
-                    parameters = JSON.parse(output.arguments)
-                } catch (e) {
-                    console.error("τ Encountered an error parsing function arguments for function", name, output.arguments)
-                }
-                function_call = { name, parameters }
-            }
-        }
-
-    }
-
-    return {
-        function_call,
-        transcript
-    }
-}
 
 export function parse_message(message) {
     const message_string = message.toString();
@@ -131,83 +90,83 @@ export function log_message_handler_factory(name) {
     }
 }
 
-export async function handle_response_creation({
-    ws,
-    model
-}) {
+// export async function handle_response_creation({
+//     ws,
+//     model
+// }) {
 
-    let audio_deltas = []
-    let total_duration = 0
-    let start_time = Date.now()
-    let first_audio_delta_compute_time = null
-    let first_text_delta_compute_time = null
-    let first_audio_delta_timestamp = null
+//     let audio_deltas = []
+//     let total_duration = 0
+//     let start_time = Date.now()
+//     let first_audio_delta_compute_time = null
+//     let first_text_delta_compute_time = null
+//     let first_audio_delta_timestamp = null
 
-    async function delta_listener_process() {
-        let off_audio_handler = message_handler(
-            ws,
-            data => data.type === "response.audio.delta",
-            data => {
-                if (audio_deltas.length === 0) {
-                    first_audio_delta_timestamp = Date.now()
-                    first_audio_delta_compute_time = Date.now() - start_time
-                }
-                audio_deltas.push(data.delta)
-                let duration_ms = data.delta.length / 64
-                total_duration += duration_ms
-            }
-        )
+//     async function delta_listener_process() {
+//         let off_audio_handler = message_handler(
+//             ws,
+//             data => data.type === "response.audio.delta",
+//             data => {
+//                 if (audio_deltas.length === 0) {
+//                     first_audio_delta_timestamp = Date.now()
+//                     first_audio_delta_compute_time = Date.now() - start_time
+//                 }
+//                 audio_deltas.push(data.delta)
+//                 let duration_ms = data.delta.length / 64
+//                 total_duration += duration_ms
+//             }
+//         )
 
-        let off_text_handler = message_handler(
-            ws,
-            data => (
-                data.type === "response.text.delta"
-            ),
-            _data => {
-                if (!first_text_delta_compute_time) {
-                    first_text_delta_compute_time = Date.now() - start_time
-                }
-            }
-        )
-        await message_promise(ws, data => data.type === "response.done")
-        off_audio_handler()
-        off_text_handler()
+//         let off_text_handler = message_handler(
+//             ws,
+//             data => (
+//                 data.type === "response.text.delta"
+//             ),
+//             _data => {
+//                 if (!first_text_delta_compute_time) {
+//                     first_text_delta_compute_time = Date.now() - start_time
+//                 }
+//             }
+//         )
+//         await message_promise(ws, data => data.type === "response.done")
+//         off_audio_handler()
+//         off_text_handler()
 
-    }
+//     }
 
-    delta_listener_process()
+//     delta_listener_process()
 
-    let data = await message_promise(ws, data => {
-        if (data.type === "response.done") return true
-        if (data.type === "response.cancelled") return true
-    })
+//     let data = await message_promise(ws, data => {
+//         if (data.type === "response.done") return true
+//         if (data.type === "response.cancelled") return true
+//     })
     
-    let compute_time = Date.now() - start_time
-    if (data.type === "response.cancelled" || data.response?.status == "cancelled") {
-        console.warn("τ A response was cancelled")
-        return null
-    }
+//     let compute_time = Date.now() - start_time
+//     if (data.type === "response.cancelled" || data.response?.status == "cancelled") {
+//         console.warn("τ A response was cancelled")
+//         return null
+//     }
 
-    if (data.response.status === "failed") {
-        if (process.env.TAU_LOGGING > 0) console.info(data.response)
-        console.warn("τ A response.create request failed after", compute_time, "ms")
-        return null
-    }
+//     if (data.response.status === "failed") {
+//         if (process.env.TAU_LOGGING > 0) console.info(data.response)
+//         console.warn("τ A response.create request failed after", compute_time, "ms")
+//         return null
+//     }
 
-    let response_data = extract_response_data(data.response)
-    let usage = compute_usage({data, model})
-    let payload = {
-        response_id : data.response.id,
-        compute_time,
-        get audio_deltas(){ return audio_deltas },
-        usage,
-        first_audio_delta_compute_time,
-        first_text_delta_compute_time,
-        first_audio_delta_timestamp,
-        total_audio_duration: total_duration,
-        ... response_data
-    }
+//     let response_data = extract_response_data(data.response)
+//     let usage = compute_usage({data, model})
+//     let payload = {
+//         response_id : data.response.id,
+//         compute_time,
+//         get audio_deltas(){ return audio_deltas },
+//         usage,
+//         first_audio_delta_compute_time,
+//         first_text_delta_compute_time,
+//         first_audio_delta_timestamp,
+//         total_audio_duration: total_duration,
+//         ... response_data
+//     }
 
-    return payload
+//     return payload
 
-}
+// }

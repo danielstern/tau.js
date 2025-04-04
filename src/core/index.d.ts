@@ -225,7 +225,7 @@ export interface Session {
      * 
      * Fiddling with this directly will probably cause unexpected behaviors.
      */
-    _ws: WebSocket
+    __ws: WebSocket
 
     /**
      * An observable which sends along any data sent from the remote server.

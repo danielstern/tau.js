@@ -8,11 +8,10 @@ import {
 } from "../create-ws/index.js";
 import {
     connect_to_tau_ws,
-    handle_response_creation,
     log_message_handler_factory,
     message_promise,
     parse_message,
-    send_ws,
+    send_ws
 } from "./etc.js";
 
 let session_count = 0
@@ -31,20 +30,18 @@ export async function create_session({
     model = "4o",
     name = `tau-session-${++session_count}-${Date.now()}`,
     ws_url = process.env.TAU_WS_URL ?? `ws://localhost:30033`,
-    handle_ws_voice_in = true
+    handle_ws_voice_in = true,
+    time_to_live = 1000 * 60 * 25
 } = {}) {
 
     let openai_ws = null
     let tau_ws = null
     let event$ = new Subject()
-    let response$ = new Subject()
-    let response_create$ = new Subject()
     let error$ = new Subject()
     let openai_session = null
     let created = Date.now()
-    let ready = false
     let active_task_count = 0
-
+    let status = "initializing"
 
     async function init() {
 
@@ -63,28 +60,14 @@ export async function create_session({
             event$.next(data)
         })
 
-        // openai_ws.on("message", async (message) => {
-        //     let data = parse_message(message)
-        //     if (data.type === "response.created") {
-        //         active_task_count++
-        //         response_create$.next()
-        //         let response = await handle_response_creation({ ws: openai_ws, model })
-        //         if (response) {
-        //             response$.next(response)
-        //         }
-        //         else {
-        //             response_cancelled$.next({})
-        //         }
-        //         active_task_count--
-        //     }
-        // })
-
         openai_ws.on("error", async (e) => {
+            status = "error"
             error$.next(e)
         })
 
         openai_ws.on("close", () => {
             console.info("τ Websocket closed unexpectedly.")
+            status = "error"
             error$.next({ type: "closed_unexpectedly" })
         })
 
@@ -109,13 +92,13 @@ export async function create_session({
             handle_ws_voice_in
         })
 
-
-        ready = true
+        status = "available"
         return openai_ws
     }
 
     function close() {
 
+        status = "closed"
         if (tau_ws) {
             tau_ws.removeAllListeners()
             tau_ws.close()
@@ -134,7 +117,6 @@ export async function create_session({
         send_ws(openai_ws, { type: "session.update", session: updates });
         let { session } = await message_promise(openai_ws, data => data.type === "session.updated")
         openai_session = session
-        if (process.env.TAU_LOGGING > 0) console.info("τ Updated session", openai_session)
     }
 
     async function create({ message, role }) {
@@ -166,7 +148,7 @@ export async function create_session({
     async function create_audio(bytes) {
         if (!bytes) return console.warn("τ No audio input detected.")
         let type = "input_audio"
-        let id = `tau-audio-${v4()}-${Date.now()}`
+        let id = v4().slice(0,32)
 
         send_ws(openai_ws, {
             type: "conversation.item.create",
@@ -234,7 +216,9 @@ export async function create_session({
         let total_audio_duration = 0
         let is_cancelled = false
         let is_done = false
-        let tau_event_id = `tau-response-${Date.now()}-${v4()}`
+        let tau_event_id = v4().slice(0,32)
+        let conversation_item_id = null
+        // let tau_event_id = `tau-response-${Date.now()}-${v4()}`
 
         send_ws(openai_ws, {
             type: "response.create",
@@ -252,11 +236,17 @@ export async function create_session({
 
         async function observe_response(message) {
             let data = parse_message(message)
-            console.info("response_id", response_id)
-            console.info("observe response", data.type)
+            // console.info("response_id", response_id)
+            // console.info("observe response", data.type, data)
 
             if (data.type === "response.created" && data.response?.metadata?.tau_event_id === tau_event_id) {
                     response_id = data.response.id
+            }
+
+            if (data.type === "response.output_item.done" && data.response_id === response_id) {
+                // console.info("CREATED", data)
+                conversation_item_id = data.item.id
+                console.info({conversation_item_id})
             }
 
             if (data.type === "response.text.delta" && data.response_id === response_id) {
@@ -299,20 +289,22 @@ export async function create_session({
         }
 
         async function promise() {
+            let start_time = Date.now()
+            let max_duration = 12000
             while (true) {
-                if (is_cancelled) {
-                    return {
-                        status : "cancelled"
-                    }
-                }
+                let is_timed_out = Date.now() > start_time + max_duration
+                if (is_timed_out) return { status : "timed_out" }
+                if (is_cancelled || !openai_ws) return { status : "cancelled" }
                 if (is_done) {
                     return {
                         status : "completed",
                         response_id,
+                        conversation_item_id,
                         response : last_response,
                         total_audio_duration,
-                        transcript : text_deltas.join("")
-
+                        transcript : text_deltas.join(""),
+                        get audio_deltas() { return audio_deltas },
+                        get pcm() { return audio_deltas.join("")}
                     }
                 }
                 await delay(40)
@@ -323,8 +315,6 @@ export async function create_session({
             send_ws(openai_ws, { type: "response.cancel" , response_id })
         }
 
-
-        
         openai_ws.on("message", observe_response)
         return {
             tau_event_id,
@@ -334,7 +324,21 @@ export async function create_session({
         }
     }
 
+    async function status_loop() {
+        while (true) {
+            if (created + time_to_live < Date.now()) {
+                status = "expired"
+                close()
+            }
+            if (status !== "available") {
+                return
+            }
+            await delay(100)
+        }
+    }
+
     await init()
+    status_loop()
 
     return {
         user,
@@ -350,12 +354,11 @@ export async function create_session({
         delete_conversation_item,
         error$,
         event$,
-        response$,
         get created() { return created },
-        get ready() { return ready },
+        get status() { return status },
         get name() { return name },
         get session() { return openai_session },
-        get _ws() { return openai_ws },
-        get active_task_count() { return active_task_count }
+        get active_task_count() { return active_task_count },
+        get __ws() { return openai_ws },
     }
 }
