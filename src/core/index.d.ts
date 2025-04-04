@@ -177,10 +177,10 @@ export interface Session {
     */
     async commit_input_audio_buffer(): Promise<void>
 
-    /**
-    * Cancels an in-progress response.
-    */
-    async cancel_response(): Promise<void>
+    // /**
+    // * Cancels an in-progress response.
+    // */
+    // async cancel_response(): Promise<void>
 
     /**
      * Deletes a conversation item from the default conversation.
@@ -196,7 +196,7 @@ export interface Session {
     * The default conversation can only have one response being generated at a time, but multiple can be generated at once if the conversation is set to "none".
     * 
     */
-    async response(response_options?: ResponseOptions): Promise<Response>
+    async response(response_options?: ResponseOptions):  any
 
     /**
     * Ends the session and closes all associated websockets.
@@ -213,10 +213,10 @@ export interface Session {
      */
     session: SessionDetails
 
-    /**
-     * Accumulated token usage and cost for the session. 
-     */
-    usage: UsageData
+    // /**
+    //  * Accumulated token usage and cost for the session. 
+    //  */
+    // usage: UsageData
 
     /**
      * The websocket object currently connected to the model.
@@ -245,7 +245,7 @@ export interface Session {
      */
     response$: Observable<Response>
 
-    active_task_count : number
+    // active_task_count : number
 }
 
 /**
@@ -374,18 +374,18 @@ export declare async function create_session(
         /**
          * If not null, if the websocket connection closes unexpectedly, the session will attempt to automatically recover.
          */
-        recovery : {
-            /**
-             * If true, the recovery process will attempt to recreate all conversation items and regenerate all responses that existed in the conversation prior to the websocket closing.
-             * If disabled, recovery will only consist of recreating the websocket connection and updating the session
-             */
-            replay_messages? : boolean,
+        // recovery : {
+        //     /**
+        //      * If true, the recovery process will attempt to recreate all conversation items and regenerate all responses that existed in the conversation prior to the websocket closing.
+        //      * If disabled, recovery will only consist of recreating the websocket connection and updating the session
+        //      */
+        //     replay_messages? : boolean,
 
-            /**
-             * The maximum number of responses the recovery process will attempt to regenerate.
-             * Responses appearing in the recovery log after the maximum number of regenerated responses has already been reached will be ignored.
-             */
-            max_regenerate_response_count : number
-        }
+        //     /**
+        //      * The maximum number of responses the recovery process will attempt to regenerate.
+        //      * Responses appearing in the recovery log after the maximum number of regenerated responses has already been reached will be ignored.
+        //      */
+        //     max_regenerate_response_count : number
+        // }
     })
     : Promise<Session>;

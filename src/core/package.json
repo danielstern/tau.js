@@ -1,18 +1,19 @@
 {
     "name": "@tau-js/core",
-    "version": "1.2.0-alpha",
+    "version": "2.2.0-alpha",
     "main": "index.js",
     "type": "module",
     "author": "daniel j. stern (code whisperer)",
     "exports": {
         ".": "./index.js"
     },
-    "scripts" : {
+    "scripts": {
         "test": "vitest"
     },
     "dependencies": {
         "delay": "^6.0.0",
         "rxjs": "^7.8.1",
+        "uuid": "^11.1.0",
         "ws": "^8.18.0"
     },
     "publishConfig": {
