@@ -244,18 +244,24 @@ export async function create_session({
             }
 
             if (data.type === "response.output_item.done" && data.response_id === response_id) {
-                // console.info("CREATED", data)
                 conversation_item_id = data.item.id
-                console.info({conversation_item_id})
             }
 
             if (data.type === "response.text.delta" && data.response_id === response_id) {
-                event$.next({ type : "response.text.delta", delta : data.delta })
+                event$.next({ 
+                    type : "response.text.delta", 
+                    delta : data.delta,
+                    response_id
+                })
                 text_deltas.push(data.delta)
             }
 
             if (data.type === "response.audio_transcript.delta" && data.response_id === response_id) {
-                event$.next({ type : "response.audio_transcript.delta", delta : data.delta })
+                event$.next({ 
+                    type : "response.audio_transcript.delta", 
+                    delta : data.delta,
+                    response_id
+                })
                 text_deltas.push(data.delta)
             }
 
@@ -264,7 +270,8 @@ export async function create_session({
                 event$.next({ 
                     type : "response.audio.delta", 
                     duration_ms,
-                    get delta() { return data.delta }
+                    get delta() { return data.delta },
+                    response_id
                 })
                 audio_deltas.push(data.delta)
                 total_audio_duration += duration_ms
@@ -272,7 +279,11 @@ export async function create_session({
 
             if (data.type === "response.cancelled" && data.response.id === response_id) {
                 is_cancelled = true
-                event$.next({ type : "response.cancelled", status : data.response.status  })
+                event$.next({ 
+                    type : "response.cancelled", 
+                    status : data.response.status,
+                    response_id 
+                })
                 openai_ws.off("message", observe_response)
             }
 
@@ -282,7 +293,8 @@ export async function create_session({
                 event$.next({ 
                     type : "response.done", 
                     status : data.response.status, 
-                    response : data.response
+                    response : data.response,
+                    response_id
                 })
                 openai_ws.off("message", observe_response)
             }
