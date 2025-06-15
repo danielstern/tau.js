@@ -484,21 +484,16 @@ async function create_session(
   API key for the session. If undefined, the `OPENAI_API_KEY` environment variable is used.
 
 - **`model?`** (`Model`):  
-  The model to use. Supported models:  
-  - **4o (default):** Reliable with nuanced output (200 million parameters).  
-  - **4o-mini:** Less reliable but cost-effective (20 million parameters).
+  The model to use. Defaults to `gpt-4o-realtime`.
+
+- **`version?`** (`Version`):  
+  The model to use. Defaults to `VERSIONS["latest"]`.
 
 - **`name?`** (`Name`):  
   Optional session identifier for debugging purposes.
 
-- **`debug?`** (`boolean`):  
-  If `true`, connects the session to the debug server for real-time monitoring of voice output.  
-  *Usage:*  
-  - Install: `npm install -g @tau-js/cli`  
-  - Run: `tau debug start`
-
-- **`recovery?`** (`RecoveryOptions`):
-  Defines behavior during automated session recovery procedure (occurs when websocket closes unexpectedly or times out.)
+- **`ws_url`**
+  
 
 ## Returns
 

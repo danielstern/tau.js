@@ -1,18 +1,23 @@
 import WebSocket from "ws";
 import {
     API_KEY,
-    REALTIME_API_MINI_URL,
-    REALTIME_API_URL
+    MODELS,
+    VERSIONS
 } from "./config.js";
 
 export function create_openai_realtime_ws({
     api_key,
-    model,
+    model = MODELS["4o"],
+    version = VERSIONS["latest"],
     name
 }) {
     if (API_KEY && !api_key) api_key = API_KEY
     if (!api_key) throw new Error(`You must specify an API key to this library. 
 Specify the \`api_key\` argument when creating a new session or set the OPENAI_API_KEY environment variable.`)
+
+    if (model === MODELS["4o-mini"] && version !== VERSIONS["preview-2024-12-17"]) {
+        version = VERSIONS["preview-2024-12-17"]
+    }
 
     let headers = {
         ["Authorization"] : `Bearer ${api_key}`,
@@ -26,14 +31,9 @@ Specify the \`api_key\` argument when creating a new session or set the OPENAI_A
 
     function close_handler(name) {
         console.error(`τ ${name} closed unexpectedly.`)
-        // throw new Error(`τ ${name} closed unexpectedly. This can't be recovered from.`)
     }
 
-    let url = null
-    if (model === "4o") url = REALTIME_API_URL
-    if (model === "4o-mini") url = REALTIME_API_MINI_URL
-    if (url === null) throw new Error(`Invalid model ${model}, options are: 4o, 4o-mini`)
-
+    let url = `wss://api.openai.com/v1/realtime?model=${model}-${version}`
     let ws = new WebSocket(url, { headers })
 
     ws.on("close", close_handler)

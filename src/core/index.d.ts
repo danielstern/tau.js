@@ -10,7 +10,7 @@ type Voice = "alloy" | "ash" | "ballad" | "coral" | "echo" | "shimmer" | "sage" 
 type ToolChoice = "required" | "auto" | "none" | { type: "function", name: string }
 type Instructions = string | ""
 type Temperature = number
-type Model = "4o" | "4o-mini"
+type Model = "gpt-4o-realtime" | "gpt-4o-mini-realtime"
 type Modalities = ["text"] | ["text", "audio"]
 type ApiKey = string
 type Name = string
@@ -345,13 +345,9 @@ export declare async function create_session(
 
         /**
          * Specify the model to use for the session.
-         * 
-         * Currently supported models are: **4o (default)**, **4o-mini.**
-         * 
-         * - **4o:** Highly reliable with nuanced voice and logic. 200 million parameters. High usage cost.
-         * - **4o-mini:** Very inexpensive but random, unreliable and primitive. 20 million parameters.
          */
         model?: Model,
+        version?: any,
 
         /**
          * Optional session identifier for debugging purposes. 
